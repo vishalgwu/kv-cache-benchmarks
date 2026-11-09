@@ -35,3 +35,6 @@ Earlier documentation is preserved in [docs/LEGACY_MISSION_CONTROL.md](docs/LEGA
 - Label synthetic workloads and analytical estimates; never present them as measured hardware performance.
 
 The first milestone is one reproducible baseline inference run with real measurements. Hardware and engine selection must precede performance claims.
+
+
+[project on process]
