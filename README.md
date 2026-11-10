@@ -25,6 +25,9 @@ Earlier documentation is preserved in [docs/LEGACY_MISSION_CONTROL.md](docs/LEGA
 
 ## Measurement rules
 
+
+
+
 - Record hardware, model revision, engine/version, precision, cache settings, workload seed, and run configuration.
 - Use actual tokenized lengths; input plus generated tokens must fit the supported context.
 - Measure TTFT from client request submission to the first generated token, documenting transport and streaming behavior.
