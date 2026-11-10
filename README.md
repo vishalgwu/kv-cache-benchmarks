@@ -8,7 +8,12 @@ Under a fixed model, inference engine, and hardware configuration, when does KV-
 
 The intended output is a reproducible benchmark suite and an evidence-backed performance report. FabricOps remains the separate infrastructure investigation copilot project.
 
+
+
+
 ## Current status
+
+
 
 **Scope defined; benchmark implementation has not started.** The existing Python workflow, synthetic incidents, tests, and Next.js dashboard belong to an earlier diagnostics demo. They do not run inference, measure KV-cache consumption, or demonstrate offload performance. Existing synthetic incident values and simulated token counts are not benchmark results.
 
