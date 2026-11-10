@@ -23,6 +23,10 @@ Earlier documentation is preserved in [docs/LEGACY_MISSION_CONTROL.md](docs/LEGA
 5. **Analyze tradeoffs:** plot memory, latency, and throughput; identify capacity boundaries and regressions; report variability and measurement limitations.
 6. **Package the evidence:** publish configuration files, raw run records, reproducible commands, charts, and a report explaining which strategy helps under which conditions.
 
+
+
+
+
 ## Measurement rules
 
 
