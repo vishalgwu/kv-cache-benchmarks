@@ -37,5 +37,3 @@ Earlier documentation is preserved in [docs/LEGACY_MISSION_CONTROL.md](docs/LEGA
 The first milestone is one reproducible baseline inference run with real measurements. Hardware and engine selection must precede performance claims.
 
 
-continous part - 1...
-
