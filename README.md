@@ -1,8 +1,15 @@
 ﻿# KV-cache Investigation and Benchmarking
 
+
+ 
+
 A performance engineering project measuring how context length, concurrent requests, and KV-cache placement affect inference memory usage, time to first token (TTFT), and throughput.
 
+
+
+
 ## Project question
+
 
 Under a fixed model, inference engine, and hardware configuration, when does KV-cache pressure become a capacity or latency bottleneck, and what tradeoffs do supported memory/offload strategies introduce?
 
