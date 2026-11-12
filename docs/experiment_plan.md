@@ -41,15 +41,17 @@ Stated before measuring. They may be wrong; that is a valid result.
 
 | Variable | Planned levels (candidates, adjust to hardware) |
 |----------|-------------------------------------------------|
-| Input length | 1K, 4K, 8K tokens (add 16K+ only if hardware and model allow) |
-| Concurrency | 1, 2, 4 |
+| Input length | 1K, 4K, 8K, 16K, 32K tokens (candidates; the model advertises a 32K window, so keep input + output within the limit and stop at the first capacity failure) |
+| Concurrency | 1, 2, 4, 8, 16 (add 32 only if 16 still shows no pressure) |
 | Cache strategy | Default GPU-resident baseline; CPU offload only if the engine supports it |
 
 **Controlled (held fixed across compared cells):**
-- Model and revision: `TBD`
-- Precision/dtype: `TBD` (fp16 expected on a T4)
-- Inference engine and version: `TBD`
-- Hardware, driver, runtime versions: `TBD` (recorded in `configs/environment.json`)
+- Model: `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, not gated). Revision: **commit hash `TBD`**, to be read on the first Kaggle run with `huggingface_hub.model_info(...).sha` and stored in `configs/environment.json`. Never run from an unpinned `main`.
+- Precision/dtype: fp16 (a T4 has no bf16)
+- Inference engine and version: `TBD`. Candidates: a plain Transformers runner (reliable fallback, exposes cache behavior directly) and vLLM (scheduling and cache-pool experiments), chosen after checking that vLLM installs on the Kaggle image.
+- Hardware: Kaggle free-tier NVIDIA T4 (16 GB VRAM), shared and variable. Exact GPU, driver, CUDA, Python, library versions, and date are recorded per run in `configs/environment.json`. Driver and runtime versions: `TBD` until the first run.
+- Execution: code is developed locally, pushed to GitHub, cloned into a Kaggle notebook, run there, and result files are downloaded and committed.
+- Architecture facts (layers, KV heads, head dim): `TBD`, read from the model's `config.json` in Step 3 and not assumed.
 - Output length target: 128 tokens (record actual length and stop reason)
 - Prompt policy: seeded synthetic text, distinct prompts, no unintended shared-prefix reuse
 - Prefix-caching policy: recorded explicitly per run
@@ -64,7 +66,11 @@ Stated before measuring. They may be wrong; that is a valid result.
 
 ## 5. Minimum study
 
-One model, one engine, one hardware configuration. Grid: 3 context levels x 3 concurrency levels = 9 cells, at least 3 trials each after warmup. Strategy comparison repeats the same grid for each genuinely supported strategy.
+One model, one engine, one hardware configuration. Start with a small pilot grid (1K/4K/8K x concurrency 1/2/4 = 9 cells, at least 3 trials each after warmup) to validate the runner, then extend toward 16K/32K and concurrency 8/16 to look for the capacity boundary.
+
+Rationale: if the model uses grouped-query attention with few KV heads, its cache cost per token is small (an estimate to be confirmed in Step 3), so the small pilot grid may show no memory pressure. The extended grid is what can reveal it. If no boundary appears even at the extended grid, report that as a finding rather than adding cells until something breaks.
+
+Strategy comparison repeats the same grid for each genuinely supported strategy.
 
 ## 6. Planned charts
 
@@ -82,7 +88,8 @@ Every chart has a named input variable and measured outcome.
 
 - Stop increasing context or concurrency after the first out-of-memory, timeout, or rejection until the next level is reviewed by hand.
 - Retry cap: maximum 1 retry per failed request; retries are logged and never counted as clean samples.
-- Total budget: `TBD` GPU-hours (free-tier quota) or `TBD` spend limit if renting. Stop when the budget is reached and report what was completed.
+- Total budget: Kaggle free-tier weekly GPU quota (current limit `TBD`, read from the Kaggle account page). No paid resources. Stop when the quota is reached and report what was completed.
+- Kaggle sessions can end without warning: write every request record to disk as it completes and download results before the session closes.
 - If more than 10% of requests in a cell fail for reasons other than a capacity boundary, pause and investigate before continuing.
 
 ## 8. Fallbacks
