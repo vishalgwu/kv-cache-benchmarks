@@ -6,8 +6,8 @@ A step is **Accepted** only when its completion gate is met and the evidence is 
 |---|------|--------|----------|-----------------|
 | 1 | Freeze the experiment and baseline scope | In progress | `docs/experiment_plan.md` | Can explain what the study will and will not prove |
 | 2 | Choose hardware, model, and engine | In progress (model, dtype, and hardware chosen; engine, revision hash, and environment manifest pending) | `configs/environment.json`, dependency lock | One real generation works in a repeatable environment |
-| 3 | Understand and estimate KV-cache growth | Pending | `benchmarks/cache_estimator.py`, tests | Can calculate an estimate without presenting it as a measurement |
-| 4 | Create reproducible token workloads | Pending | `workloads/generate.py`, manifest | Every request has an auditable token budget and identity |
+| 3 | Understand and estimate KV-cache growth | In progress (estimator and tests done; real model config values pending the first Kaggle run) | `benchmarks/cache_estimator.py`, tests | Can calculate an estimate without presenting it as a measurement |
+| 4 | Create reproducible token workloads | In progress (generator and tests done; real-tokenizer run and manifest pending the pinned revision hash) | `workloads/generate.py`, manifest | Every request has an auditable token budget and identity |
 | 5 | Build the first streamed benchmark run | Pending | `benchmarks/runner.py`, one real record | One command produces a measured request and its raw record |
 | 6 | Validate memory and timing measurements | Pending | Measurement contract, sampler, tests | Metrics recomputable or limits explicit |
 | 7 | Measure the context-length sweep | Pending | Raw trial records | Each cell has repeated results or an explicit failure/skip |
