@@ -2,7 +2,7 @@
 
 A reproducible benchmark study of how **context length**, **concurrent requests**, and **supported KV-cache memory strategies** affect GPU/CPU memory use, time to first token (TTFT), and token throughput during LLM inference.
 
-> **Status: planning and setup.** No benchmark runner, hardware manifest, or measured results exist yet. Nothing in this repository should be read as a performance finding until the corresponding step below is marked accepted.
+> **Status: foundation and first benchmark run done; no measured findings yet.** The environment, model, cache estimator, workload generator, and streaming runner exist and have run once on a Kaggle T4 (a pipeline check, not a result). Nothing in this repository should be read as a performance finding until the sweep steps (7-9) are marked accepted. See [docs/progress_tracker.md](docs/progress_tracker.md).
 
 ## Central question
 
@@ -50,11 +50,11 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Freeze the experiment and baseline scope | Pending |
-| 2 | Choose hardware, model, and engine | Pending |
-| 3 | Understand and estimate KV-cache growth | Pending |
-| 4 | Create reproducible token workloads | Pending |
-| 5 | Build the first streamed benchmark run | Pending |
+| 1 | Freeze the experiment and baseline scope | In progress (plan drafted; owner's two self-check answers pending) |
+| 2 | Choose hardware, model, and engine | Accepted (Kaggle T4, Qwen2.5-1.5B-Instruct fp16, vLLM 0.33.0) |
+| 3 | Understand and estimate KV-cache growth | Accepted (28 KiB/token estimate matches vLLM's reported cache capacity) |
+| 4 | Create reproducible token workloads | In progress (generator verified with the real tokenizer; final sweep manifest pending) |
+| 5 | Build the first streamed benchmark run | Accepted (runner works end to end; first run is a pipeline check) |
 | 6 | Validate memory and timing measurements | Pending |
 | 7 | Measure the context-length sweep | Pending |
 | 8 | Add true concurrent-request experiments | Pending |
@@ -65,11 +65,11 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 
 **Milestone gates:** A Foundation (1-4) · B First valid benchmark (5-6) · C Experimental evidence (7-9) · D Finished study (10-12).
 
-### Step 1 (next): freeze the experiment and baseline scope
-- Write `docs/experiment_plan.md`: question, hypotheses, variables, stopping rules.
-- Define the minimum study: one model, one engine, one hardware configuration, a context/concurrency grid, and a cache-strategy comparison if supported.
-- Create `benchmarks/`, `configs/`, `workloads/`, `results/`, `analysis/`, `tests/`.
-- Done when you can explain exactly what the study will and will not prove.
+### Next: Step 6, validate memory and timing measurements
+- Write the measurement contract (units, scope, source, measured/estimated label for every value).
+- Add a GPU memory sampler (idle baseline, sampled peak) and read the vLLM server's `/metrics` endpoint for cache usage and running/waiting requests.
+- Add tests for empty streams, timeouts, zero- and one-token output, and aggregation.
+- Done when metrics can be independently recomputed or their limits are explicit.
 
 ## Concepts covered
 
@@ -89,7 +89,7 @@ docs/         methods, findings, legacy notes
 
 ## Hardware
 
-Not yet selected. The first experiment is planned for a single NVIDIA GPU (a free-tier T4 with 16 GB VRAM is a candidate). Free shared GPUs are noisier than dedicated hardware, so the exact GPU, driver, and date are recorded with every run. Results are only valid for the hardware manifest they ship with.
+Kaggle free-tier notebook with one NVIDIA Tesla T4 (15,360 MiB) used for every run; the machine exposes two T4s but the study sets `CUDA_VISIBLE_DEVICES=0`. Model: `Qwen/Qwen2.5-1.5B-Instruct` at a pinned revision, fp16. Engine: vLLM 0.33.0. Free shared GPUs are noisier than dedicated hardware, so the exact GPU, driver, and date are recorded with every run (`configs/environment.json`). Results are only valid for the hardware manifest they ship with.
 
 ## Documents
 

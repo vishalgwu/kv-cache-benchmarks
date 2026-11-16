@@ -46,13 +46,15 @@ Stated before measuring. They may be wrong; that is a valid result.
 | Cache strategy | Default GPU-resident baseline; CPU offload only if the engine supports it |
 
 **Controlled (held fixed across compared cells):**
-- Model: `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, not gated). Revision: **commit hash `TBD`**, to be read on the first Kaggle run with `huggingface_hub.model_info(...).sha` and stored in `configs/environment.json`. Never run from an unpinned `main`.
+- Model: `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, not gated). Revision: commit hash `989aa7980e4cf806f80c7fef2b1adb7bc71aa306` (stored in `configs/environment.json`). Never run from an unpinned `main`.
 - Precision/dtype: fp16 (a T4 has no bf16)
-- Inference engine and version: `TBD`. Candidates: a plain Transformers runner (reliable fallback, exposes cache behavior directly) and vLLM (scheduling and cache-pool experiments), chosen after checking that vLLM installs on the Kaggle image.
-- Hardware: Kaggle free-tier NVIDIA T4 (16 GB VRAM), shared and variable. Exact GPU, driver, CUDA, Python, library versions, and date are recorded per run in `configs/environment.json`. Driver and runtime versions: `TBD` until the first run.
+- Inference engine and version: vLLM 0.33.0, run as an OpenAI-compatible server and measured with a streaming client (attention backend TRITON_ATTN on the T4). Chosen after it generated correctly on the Kaggle T4 in fp16.
+- Hardware: Kaggle free-tier NVIDIA T4 (16 GB VRAM), shared and variable. Exact GPU, driver, CUDA, Python, library versions, and date are recorded per run in `configs/environment.json`. Driver 580.178.04, CUDA 13.0, Python 3.13.16, torch 2.14.0 (full list in `configs/environment.json` and `configs/requirements.lock.txt`).
 - Execution: code is developed locally, pushed to GitHub, cloned into a Kaggle notebook, run there, and result files are downloaded and committed.
-- Architecture facts (layers, KV heads, head dim): `TBD`, read from the model's `config.json` in Step 3 and not assumed.
+- Architecture facts (read from the pinned model's `config.json`): 28 layers, 12 query heads, 2 KV heads, head dim 128, all full attention, 32,768 max positions. Estimated KV cache: 28,672 bytes (28 KiB) per token in fp16.
 - Output length target: 128 tokens (record actual length and stop reason)
+- Sampling: greedy (temperature 0), with the server launched using `--generation-config vllm` so the model's `generation_config.json` defaults (repetition_penalty 1.1, top_k 20, top_p 0.8) do not silently apply
+- Server launch: one launch with a fixed `max_model_len` for the whole sweep, so the KV-cache pool size is identical across cells (it varies with `max_model_len`)
 - Prompt policy: seeded synthetic text, distinct prompts, no unintended shared-prefix reuse
 - Prefix-caching policy: recorded explicitly per run
 - Load policy: fixed-concurrency batches (request-rate sweeps are a later extension)
@@ -117,4 +119,6 @@ Every chart has a named input variable and measured outcome.
 
 ## Deviations (append only)
 
-_None yet._
+- **2026-11-16, clarification (sampling):** the first real run's server log showed vLLM applying the model's `generation_config.json` defaults on top of the request (repetition_penalty 1.1, top_k 20, top_p 0.8). The plan did not control this. The launcher now passes `--generation-config vllm`, and run `20261116T210839Z-d6a00143` is treated as a pipeline check, not data.
+- **2026-11-16, clarification (cache pool):** the KV-cache pool size depends on the `max_model_len` the server starts with (8.68 GiB at 4096, 8.92 GiB at 1216, because startup profiling measured different peak activation). The sweep uses one fixed launch setting.
+- **2026-11-16, clarification (warmup):** a short warmup prompt does not warm the shapes of a long prefill, so Step 7 adds a warmup at each context length.

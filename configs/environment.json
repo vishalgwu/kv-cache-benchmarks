@@ -102,7 +102,20 @@
     "vllm_available_kv_cache_gib": 8.68,
     "reading": "The analytical estimate reproduces the engine-reported cache capacity to within rounding for this configuration. This is one data point and supports H4; it does not prove it generally."
   },
+  "step5_run_caveats": {
+    "sampling_defaults": "The server log shows vLLM applied the model's generation_config.json defaults (repetition_penalty 1.1, top_k 20, top_p 0.8; temperature 0.7 was overridden by the request's temperature 0). Run 20261116T210839Z-d6a00143 therefore ran with repetition_penalty 1.1 and is a pipeline-verification run, not a baseline. Fixed in code: the launcher now passes --generation-config vllm (the flag the server's own log message suggested; confirm it is accepted on the next launch).",
+    "host_resources_seen_in_log": "vLLM reported Available RAM 6.18 GiB and reduced Torch threads from 2 to 1. Host RAM bounds any CPU-offload experiment (Step 9), and a client load generator shares these few CPU cores with the server (Step 8).",
+    "benign_log_messages": [
+      "FA2 unsupported on compute capability < 8 (an ERROR line, but vLLM falls back to TRITON_ATTN)",
+      "bfloat16 to float16 casting of checkpoint weights",
+      "FlashInfer top-p/top-k sampler unavailable on compute capability 7.5, falls back",
+      "'force killing remaining processes' and a leaked-semaphore warning at server shutdown"
+    ],
+    "metrics_endpoint": "The server's route table lists /metrics, /health and /load, so engine cache usage and running/waiting counts should be readable in Step 6."
+  },
   "open_items": [
+    "Confirm vllm serve accepts --generation-config vllm (suggested by the server's own log message)",
+    "Read /metrics for cache usage and running/waiting requests in Step 6",
     "Launch the server ONCE with a fixed max_model_len (32768) for the whole sweep so cache capacity is identical across cells",
     "Add a warmup request at each context length (a 37-token warmup does not warm the shapes of a 1K-32K prefill)",
     "Decide benchmark-time vLLM settings: max_model_len (32768 for the long-context cells), prefix caching off, enforce_eager or not",

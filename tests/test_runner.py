@@ -171,6 +171,25 @@ def test_payload_asks_for_engine_usage_and_greedy_decoding():
     assert eng.build_payload("m", "hello", 128, ignore_eos=True)["ignore_eos"] is True
 
 
+def test_server_argv_pins_revision_and_controls_sampling_defaults(monkeypatch):
+    monkeypatch.setattr(eng.shutil, "which", lambda name: "/usr/bin/vllm")
+    server = eng.VLLMServer("m", "abc123", max_model_len=2048)
+    argv = server.argv()
+    assert argv[:3] == ["/usr/bin/vllm", "serve", "m"]
+    assert argv[argv.index("--revision") + 1] == "abc123"
+    assert argv[argv.index("--tokenizer-revision") + 1] == "abc123"
+    assert argv[argv.index("--generation-config") + 1] == "vllm"  # no silent model defaults
+    assert "--no-enable-prefix-caching" in argv and "--enable-prefix-caching" not in argv
+    assert server.settings["generation_config"] == "vllm"
+    assert server.settings["enable_prefix_caching"] is False
+
+
+def test_server_argv_fails_clearly_without_vllm(monkeypatch):
+    monkeypatch.setattr(eng.shutil, "which", lambda name: None)
+    with pytest.raises(eng.ServerStartError, match="vllm"):
+        eng.VLLMServer("m", "abc").argv()
+
+
 # ----------------------------------------------------------------------------- records
 def make_prompt(actual=20):
     return {"prompt_id": "L1-000", "prompt_sha256": "x", "target_input_tokens": 20,

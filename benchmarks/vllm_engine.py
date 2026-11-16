@@ -187,6 +187,10 @@ class VLLMServer:
             "gpu_memory_utilization": self.gpu_memory_utilization,
             "enable_prefix_caching": self.enable_prefix_caching,
             "enforce_eager": self.enforce_eager,
+            # "vllm" ignores the model's generation_config.json, whose defaults
+            # (repetition_penalty 1.1, top_k 20, top_p 0.8 for Qwen) would otherwise
+            # silently apply to every request that does not override them.
+            "generation_config": "vllm",
             "cuda_visible_devices": "0",
             "extra_args": list(self.extra_args),
         }
@@ -199,6 +203,7 @@ class VLLMServer:
                 "--tokenizer-revision", self.revision, "--dtype", self.dtype,
                 "--max-model-len", str(self.max_model_len),
                 "--gpu-memory-utilization", str(self.gpu_memory_utilization),
+                "--generation-config", "vllm",
                 "--host", self.host, "--port", str(self.port)]
         args.append("--enable-prefix-caching" if self.enable_prefix_caching
                     else "--no-enable-prefix-caching")
