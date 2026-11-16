@@ -106,6 +106,24 @@ def test_units_are_binary_and_labeled():
     assert "estimated" in ce.format_bytes(10)
 
 
+def test_real_qwen_config_matches_vllm_reported_capacity():
+    # Real values from Qwen/Qwen2.5-1.5B-Instruct config.json (Kaggle run, 2026-11-16).
+    hf = {
+        "num_hidden_layers": 28,
+        "num_attention_heads": 12,
+        "num_key_value_heads": 2,
+        "hidden_size": 1536,
+        "layer_types": ["full_attention"] * 28,
+        "use_sliding_window": False,
+        "sliding_window": None,
+    }
+    cfg = ce.config_from_hf(hf, "fp16")
+    assert cfg.bytes_per_token == 28672  # 28 KiB per token
+    # vLLM 0.33.0 reported 324,928 cache tokens in "8.68 GiB available".
+    gib = ce.estimate_cache_bytes(cfg, [324_928]) / ce.GIB
+    assert gib == pytest.approx(8.68, abs=0.01)
+
+
 def test_summary_is_labeled_estimate():
     s = ce.summarize(CFG, 1000, 128, 4)
     assert s["label"] == "estimated"

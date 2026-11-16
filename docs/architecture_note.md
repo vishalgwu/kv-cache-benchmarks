@@ -21,6 +21,10 @@ bytes = 2 x layers x kv_heads x head_dim x bytes_per_element x sum(retained_toke
 
 Configs with `use_sliding_window: true` or non-full-attention `layer_types` are rejected rather than silently overestimated.
 
+## First cross-check against an engine (2026-11-16)
+
+For `Qwen/Qwen2.5-1.5B-Instruct` (28 layers, 2 KV heads, head dim 128, fp16) the estimate is 28,672 bytes (28 KiB) per token. vLLM 0.33.0 on a T4 reported **8.68 GiB** of KV-cache memory and a capacity of **324,928 tokens**. 324,928 x 28,672 bytes = 8.68 GiB, so the estimate reproduces the engine's own figure to within rounding. That is one configuration and one engine, so it supports H4 without proving it in general. It also shows that the cache pool is sized once at startup, which is why total GPU memory alone says little about cache use.
+
 ## Why the estimate can differ from what the GPU shows
 
 - Engines such as vLLM reserve a cache pool up front, so total GPU memory can stay flat while active cache grows.
