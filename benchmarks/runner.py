@@ -26,9 +26,12 @@ import subprocess
 import time
 from typing import Callable, Optional
 
+from benchmarks import sampling
 from benchmarks import vllm_engine as engine
 
-SCHEMA = "kv-bench-request/1"
+# /2 adds the optional per-request ``memory`` block. /1 records (no memory block)
+# remain valid; see docs/measurement_contract.md.
+SCHEMA = "kv-bench-request/2"
 CLOCK_NAME = "time.monotonic"
 TTFT_BASIS = ("client: request write start -> first non-empty content event; "
               "includes TCP connect, server queueing, prefill, and transport")
@@ -47,7 +50,7 @@ def config_hash(config: dict) -> str:
 
 def build_record(*, run_id: str, cfg_hash: str, request_id: str, prompt: dict, is_warmup: bool,
                  trial_index: int, result: engine.StreamResult, expected_model: str,
-                 max_tokens: int, ignore_eos: bool) -> dict:
+                 max_tokens: int, ignore_eos: bool, memory: Optional[dict] = None) -> dict:
     r = result
     ttft = (r.t_first_content - r.t_start) if r.t_first_content is not None else None
     e2e = (r.t_complete - r.t_start) if r.t_complete is not None else None
@@ -99,6 +102,8 @@ def build_record(*, run_id: str, cfg_hash: str, request_id: str, prompt: dict, i
         "output_text": r.text,
         "output_sha256": hashlib.sha256(r.text.encode()).hexdigest(),
     }
+    if memory is not None:
+        rec["memory"] = memory
     rec["validation_errors"] = validate_record(rec)
     rec["usable_for_analysis"] = (rec["status"] == "ok" and not is_warmup
                                   and not rec["validation_errors"])
@@ -108,6 +113,8 @@ def build_record(*, run_id: str, cfg_hash: str, request_id: str, prompt: dict, i
 def validate_record(rec: dict) -> list:
     """Return a list of problems; empty means the record is internally consistent."""
     errs = []
+    if "memory" in rec:
+        errs += sampling.validate_memory_block(rec["memory"])
     if rec["status"] != "ok":
         if not rec.get("error_category"):
             errs.append("error_without_category")
@@ -161,7 +168,9 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
                   timeout_s: float, ignore_eos: bool, out_dir: pathlib.Path,
                   server_settings: Optional[dict], stop_on_error: bool = True, concurrency: int = 1,
                   clock: Callable[[], float] = time.monotonic,
-                  server_log: Optional[str] = None) -> tuple:
+                  server_log: Optional[str] = None,
+                  monitor: Optional[sampling.MemoryMonitor] = None,
+                  baseline_s: float = 0.0) -> tuple:
     if concurrency != 1:
         raise ValueError("concurrency above 1 is implemented in Step 8, not Step 5")
 
@@ -210,6 +219,11 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
     manifest_path = run_dir / "run_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))  # before any request
 
+    if monitor is not None:
+        monitor.start()
+        if baseline_s > 0:
+            monitor.record_baseline(baseline_s)  # idle: no request in flight yet
+
     plan = ([(WARMUP_PROMPT, True, 0, WARMUP_MAX_TOKENS)] * warmup
             + [(p, False, t, max_tokens) for t in range(trials) for p in selected])
     records, counts = [], {"requests": 0, "ok": 0, "errors": 0, "warmup": 0, "usable": 0}
@@ -217,10 +231,14 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
         for n, (prompt, is_warmup, trial, req_max) in enumerate(plan):
             payload = engine.build_payload(model, prompt["text"], req_max, ignore_eos)
             result = engine.stream_chat(host, port, payload, timeout_s=timeout_s, clock=clock)
+            memory = None
+            if monitor is not None:
+                window_end = result.t_complete if result.t_complete is not None else clock()
+                memory = monitor.request_block(result.t_start, window_end)
             rec = build_record(run_id=run_id, cfg_hash=cfg_hash, request_id=f"{run_id}-{n:04d}",
                                prompt=prompt, is_warmup=is_warmup, trial_index=trial,
                                result=result, expected_model=model, max_tokens=req_max,
-                               ignore_eos=ignore_eos)
+                               ignore_eos=ignore_eos, memory=memory)
             out.write(json.dumps(rec, sort_keys=True) + "\n")
             out.flush()
             records.append(rec)
@@ -232,6 +250,16 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
             if stop_on_error and rec["status"] != "ok":
                 break
 
+    if monitor is not None:
+        monitor.stop()
+        monitor.write(run_dir)
+        manifest["memory_monitoring"] = monitor.describe()
+    if server_log:
+        try:
+            manifest["engine_reported_startup"] = sampling.parse_vllm_startup_log(
+                pathlib.Path(server_log).read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            manifest["engine_reported_startup"] = None
     manifest["finished_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
     manifest["counts"] = counts
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
@@ -257,6 +285,28 @@ def print_summary(run_dir: pathlib.Path, records: list) -> None:
         print(f"\nsample output ({first['prompt_id']}): {first['output_text'][:200]!r}")
 
 
+def make_monitor(args, server_pid: Optional[int]) -> Optional[sampling.MemoryMonitor]:
+    """Build the memory monitor, or None when sampling is off or the GPU is unreadable."""
+    if not args.sample_memory:
+        return None
+    try:
+        gpu_reader = sampling.make_gpu_reader(args.gpu_index)
+        gpu_reader()  # fail here with a clear message, not silently on the sampler thread
+    except Exception as exc:
+        print(f"warning: GPU memory sampling disabled ({exc!r})")
+        gpu_reader = None
+    monitor = sampling.MemoryMonitor(
+        gpu_reader=gpu_reader,
+        engine_reader=lambda: sampling.read_engine_metrics(args.host, args.port),
+        cpu_reader=sampling.make_cpu_reader(server_pid),
+        interval_s=args.sample_interval)
+    try:
+        monitor.engine_catalog = sampling.fetch_engine_catalog(args.host, args.port)
+    except Exception as exc:
+        print(f"warning: could not read the engine metrics catalog ({exc!r})")
+    return monitor
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 5 benchmark runner (concurrency 1).")
     ap.add_argument("--workload-dir", type=pathlib.Path, required=True,
@@ -280,6 +330,12 @@ def main() -> None:
     ap.add_argument("--no-stop-on-error", dest="stop_on_error", action="store_false")
     ap.add_argument("--concurrency", type=int, default=1)
     ap.add_argument("--out-dir", type=pathlib.Path, default=pathlib.Path("results"))
+    ap.add_argument("--sample-memory", action=argparse.BooleanOptionalAction, default=True,
+                    help="sample GPU memory, engine /metrics, and CPU memory during the run")
+    ap.add_argument("--sample-interval", type=float, default=0.5, help="seconds between samples")
+    ap.add_argument("--baseline-seconds", type=float, default=3.0,
+                    help="idle seconds sampled before the first request (memory baseline)")
+    ap.add_argument("--gpu-index", type=int, default=0, help="physical GPU index to sample")
     args = ap.parse_args()
 
     wl_manifest, _ = load_workload(args.workload_dir)
@@ -304,15 +360,18 @@ def main() -> None:
                                    enable_prefix_caching=args.enable_prefix_caching,
                                    enforce_eager=args.enforce_eager, log_path=log_path)
         with server:
-            run_dir, records = run_benchmark(server_settings=server.settings,
-                                             server_log=log_path, **kwargs)
+            monitor = make_monitor(args, server.pid)
+            run_dir, records = run_benchmark(server_settings=server.settings, server_log=log_path,
+                                             monitor=monitor, baseline_s=args.baseline_seconds,
+                                             **kwargs)
         # keep the server log with the run it belongs to
         try:
             (run_dir / "server.log").write_bytes(pathlib.Path(log_path).read_bytes())
         except OSError:
             pass
     else:
-        run_dir, records = run_benchmark(server_settings=None, **kwargs)
+        run_dir, records = run_benchmark(server_settings=None, monitor=make_monitor(args, None),
+                                         baseline_s=args.baseline_seconds, **kwargs)
     print_summary(run_dir, records)
 
 

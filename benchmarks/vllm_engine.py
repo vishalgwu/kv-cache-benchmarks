@@ -211,6 +211,10 @@ class VLLMServer:
             args.append("--enforce-eager")
         return args + list(self.extra_args)
 
+    @property
+    def pid(self) -> Optional[int]:
+        return self.proc.pid if self.proc is not None else None
+
     def _log_tail(self, lines: int = 40) -> str:
         try:
             with open(self.log_path, encoding="utf-8", errors="replace") as fh:

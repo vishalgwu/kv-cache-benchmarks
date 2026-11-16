@@ -17,7 +17,9 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
+from benchmarks import metrics as mt  # noqa: E402
 from benchmarks import runner as rn  # noqa: E402
+from benchmarks import sampling as sp  # noqa: E402
 from benchmarks import vllm_engine as eng  # noqa: E402
 from workloads import generate as g  # noqa: E402
 
@@ -345,3 +347,98 @@ def test_ignore_eos_is_sent_and_recorded(workload_dir, tmp_path):
         assert handler.last_payload["ignore_eos"] is True
     assert records[0]["ignore_eos"] is True
     assert json.loads((run_dir / "run_manifest.json").read_text())["config"]["sampling"]["ignore_eos"]
+
+
+# ----------------------------------------------------------------------------- memory sampling
+def fake_monitor(interval_s=0.01, gpu_fails=False, engine_fails=False):
+    """Monitor with scripted readers (test fixtures, not real hardware)."""
+    def gpu():
+        if gpu_fails:
+            raise RuntimeError("nvidia-smi unavailable")
+        return {"memory_used_mib": 1000.0, "memory_total_mib": 15360.0, "gpu_util_pct": 10.0,
+                "source": "fake", "scope": "device"}
+
+    def engine():
+        if engine_fails:
+            raise RuntimeError("metrics endpoint down")
+        return {"kv_cache_usage": 0.1, "requests_running": 1.0, "requests_waiting": 0.0,
+                "preemptions_total": 0.0, "metric_names": {"kv_cache_usage": "vllm:kv_cache_usage_perc"},
+                "source": "fake"}
+
+    cpu = lambda: {"server_tree_rss_mib": 500.0, "host_mem_available_mib": 4000.0,  # noqa: E731
+                   "scope": "test", "source": "fake"}
+    return sp.MemoryMonitor(gpu_reader=gpu, engine_reader=engine, cpu_reader=cpu, interval_s=interval_s)
+
+
+def slow_scenario(payload):
+    prompt_tokens = fake_counter(payload["messages"][0]["content"])
+    return good_script(first_delay=0.12, prompt_tokens=prompt_tokens)  # request lasts >= 0.16 s
+
+
+def test_runner_attaches_memory_block_and_writes_sample_files(workload_dir, tmp_path):
+    with fake_server(slow_scenario) as (host, port, _):
+        run_dir, records = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64],
+                               monitor=fake_monitor(), baseline_s=0.06)
+    rec = records[0]
+    assert rec["schema"] == "kv-bench-request/2"
+    gpu = rec["memory"]["gpu"]
+    assert gpu["label"] == "measured" and gpu["peak_used_mib_in_window"] == 1000.0
+    assert gpu["baseline_used_mib"] == 1000.0 and gpu["n_samples_in_window"] >= 3
+    assert rec["memory"]["engine"]["label"] == "measured"
+    assert rec["memory"]["cpu"]["server_tree_rss_peak_mib"] == 500.0
+    assert rec["usable_for_analysis"] is True and rec["validation_errors"] == []
+    for name in ("samples_gpu.jsonl", "samples_engine.jsonl", "samples_cpu.jsonl"):
+        assert (run_dir / name).read_text().strip() != ""
+    manifest = json.loads((run_dir / "run_manifest.json").read_text())
+    assert manifest["memory_monitoring"]["gpu"]["n_samples"] >= 3
+    assert manifest["memory_monitoring"]["gpu_idle_baseline_used_mib"]["value"] == 1000.0
+    assert mt.validate_run_dir(run_dir) == []
+
+
+def test_request_shorter_than_the_sampling_interval_is_marked_unavailable(workload_dir, tmp_path):
+    with fake_server(echoing_scenario) as (host, port, _):
+        _, records = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64],
+                         monitor=fake_monitor(interval_s=30.0))
+    gpu = records[0]["memory"]["gpu"]
+    assert gpu["label"] == "unavailable" and gpu["peak_used_mib_in_window"] is None
+    assert records[0]["usable_for_analysis"] is True  # an explicit gap, not an invalid record
+
+
+def test_failed_sampler_makes_the_section_unavailable_without_breaking_the_run(workload_dir, tmp_path):
+    with fake_server(slow_scenario) as (host, port, _):
+        run_dir, records = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64],
+                               monitor=fake_monitor(gpu_fails=True, engine_fails=True))
+    block = records[0]["memory"]
+    assert block["gpu"]["label"] == "unavailable" and block["engine"]["label"] == "unavailable"
+    assert block["cpu"]["label"] == "measured"
+    manifest = json.loads((run_dir / "run_manifest.json").read_text())
+    assert manifest["memory_monitoring"]["gpu"]["read_errors"] >= 1
+    assert "nvidia-smi unavailable" in manifest["memory_monitoring"]["gpu"]["last_error"]
+    assert mt.validate_run_dir(run_dir) == []
+
+
+def test_failed_request_still_gets_a_memory_block_and_is_not_usable(workload_dir, tmp_path):
+    with fake_server(lambda p: [], status=500) as (host, port, _):
+        _, records = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64],
+                         monitor=fake_monitor())
+    assert records[0]["status"] == "error" and "memory" in records[0]
+    assert records[0]["usable_for_analysis"] is False
+
+
+def test_engine_startup_figures_are_copied_from_the_server_log(workload_dir, tmp_path):
+    log = tmp_path / "server.log"
+    log.write_text("(EngineCore pid=1) INFO [gpu_worker.py:772] Available KV cache memory: 8.92 GiB\n"
+                   "(EngineCore pid=1) INFO GPU KV cache size: 333,904 tokens, Maximum concurrency "
+                   "for 1,216 tokens per request: 274.59x\n")
+    with fake_server(echoing_scenario) as (host, port, _):
+        run_dir, _ = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64],
+                         server_log=str(log))
+    startup = json.loads((run_dir / "run_manifest.json").read_text())["engine_reported_startup"]
+    assert startup["kv_cache_tokens"] == 333_904 and startup["available_kv_cache_gib"] == 8.92
+    assert "engine-reported" in startup["source"]
+
+
+def test_run_without_a_monitor_still_works_and_has_no_memory_block(workload_dir, tmp_path):
+    with fake_server(echoing_scenario) as (host, port, _):
+        _, records = run(workload_dir, tmp_path, host, port, warmup=0, levels=[64])
+    assert "memory" not in records[0] and records[0]["usable_for_analysis"] is True
