@@ -26,7 +26,8 @@
     "name": "vLLM",
     "version": "0.33.0",
     "status": "smoke test passed on the T4 in fp16 (one GPU, pinned revision)",
-    "attention_backend": null
+    "attention_backend": "TRITON_ATTN (vLLM chose it out of TRITON_ATTN and FLEX_ATTENTION; FlashInfer top-p/top-k sampling is unavailable on compute capability 7.5, so vLLM falls back)",
+    "benchmark_launch_flags_verified": "vllm serve accepted --revision, --tokenizer-revision, --dtype float16, --max-model-len, --gpu-memory-utilization, --no-enable-prefix-caching, --enforce-eager (echoed in the server log non-default args, 2026-11-16)"
   },
   "model": {
     "id": "Qwen/Qwen2.5-1.5B-Instruct",
@@ -76,8 +77,24 @@
     },
     "log_notes": [
       "Many warnings 'Attempted to load weight ... bfloat16 into parameter ... float16' appear at load. They are the expected bf16-to-fp16 conversion of a bf16 checkpoint, not errors.",
-      "The attention backend line was cut off by the log filter and is not recorded yet."
+      "The attention backend (TRITON_ATTN) was read from the Step 5 server log."
     ]
+  },
+  "step5_first_run": {
+    "run_id": "20261116T210839Z-d6a00143",
+    "config_hash": "d6a0014329bf64db",
+    "workload_id_used": "74d2f4b7deea1fc7",
+    "result": "2 requests ok (1 warmup, 1 measured); measured record usable_for_analysis=true, prompt_tokens 1024 matched the workload manifest, 128 output tokens, finish_reason length",
+    "single_measurement_note": "n=1. Not a finding. TTFT 0.398 s, e2e 4.621 s, decode 30.1 tok/s for one request.",
+    "server_settings": "max_model_len 1216 (auto: 1024 + 128 + 64), gpu_memory_utilization 0.85, enforce_eager true, prefix caching off",
+    "engine_reported": {
+      "available_kv_cache_memory_gib": 8.92,
+      "gpu_kv_cache_size_tokens": 333904,
+      "peak_activation_gib": 0.23,
+      "consumed_weights_plus_non_torch_gib": 3.23
+    },
+    "estimator_cross_check_2": "333,904 tokens x 28,672 bytes = 8.9163 GiB vs engine-reported 8.92 GiB",
+    "pool_size_note": "The cache pool was 8.92 GiB here versus 8.68 GiB in the max_model_len 4096 smoke test, because vLLM's startup profiling measured a different peak activation (0.23 vs 0.48 GiB). Cache capacity therefore depends on the max_model_len the server is launched with."
   },
   "estimator_cross_check": {
     "estimated_bytes_per_token": 28672,
@@ -86,7 +103,8 @@
     "reading": "The analytical estimate reproduces the engine-reported cache capacity to within rounding for this configuration. This is one data point and supports H4; it does not prove it generally."
   },
   "open_items": [
-    "Record the vLLM attention backend (read it from vllm_smoke.log)",
+    "Launch the server ONCE with a fixed max_model_len (32768) for the whole sweep so cache capacity is identical across cells",
+    "Add a warmup request at each context length (a 37-token warmup does not warm the shapes of a 1K-32K prefill)",
     "Decide benchmark-time vLLM settings: max_model_len (32768 for the long-context cells), prefix caching off, enforce_eager or not",
     "Commit a dependency lock for the key packages (configs/requirements.lock.txt)"
   ]
