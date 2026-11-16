@@ -1,0 +1,52 @@
+{
+  "schema": "kv-bench-environment/1",
+  "source": "Kaggle notebook output, 2026-11-16. Only values observed in that output are filled in; null means not yet recorded.",
+  "platform": "Kaggle free-tier notebook (shared, variable)",
+  "gpu": {
+    "model": "Tesla T4",
+    "visible_count": 2,
+    "vram_mib_each": 15360,
+    "experiment_policy": "Use exactly one GPU for every run (set CUDA_VISIBLE_DEVICES=0) and record it. Do not let the loader shard the model across both GPUs."
+  },
+  "driver_version": "580.178.04",
+  "cuda_version_reported_by_nvidia_smi": "13.0",
+  "python_version": null,
+  "torch_version": null,
+  "transformers_version": "5.20.2 (inferred from the serialized config; confirm with pip freeze)",
+  "vllm_version": null,
+  "engine": null,
+  "model": {
+    "id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "license": "apache-2.0",
+    "stored_dtype": "bfloat16",
+    "run_dtype": "float16",
+    "weights_file_size_gb": 3.09,
+    "architecture": {
+      "num_hidden_layers": 28,
+      "num_attention_heads": 12,
+      "num_key_value_heads": 2,
+      "hidden_size": 1536,
+      "head_dim": 128,
+      "layer_types": "all full_attention",
+      "use_sliding_window": false,
+      "max_position_embeddings": 32768
+    }
+  },
+  "smoke_test": {
+    "result": "passed",
+    "device": "cuda:0",
+    "dtype": "torch.float16",
+    "max_new_tokens": 100,
+    "greedy": true,
+    "revision_pinned_in_load": false,
+    "note": "Not a measurement. Untimed, one request, model loaded from the floating main branch."
+  },
+  "open_items": [
+    "Pin revision in every from_pretrained call",
+    "Restrict to one GPU",
+    "Record python and torch versions",
+    "Regenerate the pip freeze after installing transformers and accelerate",
+    "Decide the engine after testing whether vLLM installs"
+  ]
+}
