@@ -202,3 +202,37 @@ def test_cli_path_and_the_kaggle_cell_per_wave_printer_work_end_to_end(wl, tmp_p
     q = subprocess.run([sys.executable, str(script), str(run_dir)], cwd=root, capture_output=True, text=True)
     assert q.returncode == 0, q.stderr[-800:]
     assert "L64-N2-w1" in q.stdout and "ok 2/2" in q.stdout
+
+
+def test_warming_only_the_smallest_cell_per_level(wl, tmp_path):
+    from benchmarks import runner
+    _, ps = runner.load_workload(wl)
+    meas, warm = cc.select_prompts(ps, [64], [1, 4, 6], warmup_cells="smallest")
+    assert len(meas[64]) == 6 and len(warm[64]) == 1            # needs only 6 + 1 prompts, not 12
+    with pytest.raises(ValueError, match="unknown warmup_cells"):
+        cc.select_prompts(ps, [64], [1], warmup_cells="some")
+    with fake_server(echoing_scenario) as (host, port, _):
+        run_dir, records = run(wl, tmp_path, host, port, concurrencies=[1, 4], waves_per_cell=1,
+                               warmup_cells="smallest")
+    warm_waves = [r["wave_id"] for r in records if r["is_warmup"] and r["wave_id"] != "warmup"]
+    assert warm_waves == ["L64-N1-warm", "L128-N1-warm"]
+    cfg = json.loads((run_dir / "run_manifest.json").read_text())["config"]
+    assert cfg["warmup_cells"] == "smallest" and cfg["warmup_wave_per_cell"] is False
+    assert mt.validate_run_dir(run_dir) == []
+
+
+@pytest.mark.parametrize("name", ["kaggle_step8_conc.py", "kaggle_step8_16k.py", "kaggle_step8_32k.py"])
+def test_kaggle_cells_use_only_real_runner_flags_and_a_working_printer(name, wl, tmp_path):
+    import re
+    import subprocess
+    root = pathlib.Path(__file__).resolve().parents[1]
+    cell = (root / "docs" / name).read_text(encoding="utf-8")
+    compile(cell, name, "exec")
+    helptext = subprocess.run([sys.executable, "-m", "benchmarks.runner", "--help"], cwd=root,
+                              capture_output=True, text=True).stdout
+    cmd = re.search(r'python -m benchmarks\.runner(.*?)f"--out-dir', cell, re.S).group(1)
+    for flag in set(re.findall(r"--[a-z][a-z-]+", cmd)):
+        assert flag in helptext, (name, flag)
+    assert "--warmup-cells smallest" in cmd or name == "kaggle_step8_conc.py"
+    code = re.search(r"code = r'''(.*?)'''", cell, re.S).group(1)
+    compile(code, "printer", "exec")

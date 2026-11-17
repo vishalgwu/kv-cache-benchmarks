@@ -394,6 +394,8 @@ def main() -> None:
     ap.add_argument("--concurrency", type=int, default=1)
     ap.add_argument("--concurrency-levels", type=int, nargs="+",
                     help="Step 8: run fixed-concurrency waves at each of these N (see benchmarks/concurrent.py)")
+    ap.add_argument("--warmup-cells", choices=["all", "smallest"], default="all",
+                    help="with --concurrency-levels: warm every cell, or only the smallest N of each level")
     ap.add_argument("--waves", type=int, default=3, help="waves per (level, N) cell with --concurrency-levels")
     ap.add_argument("--out-dir", type=pathlib.Path, default=pathlib.Path("results"))
     ap.add_argument("--sample-memory", action=argparse.BooleanOptionalAction, default=True,
@@ -423,7 +425,7 @@ def main() -> None:
                       revision=revision, levels=levels, concurrencies=args.concurrency_levels,
                       waves_per_cell=args.waves, warmup=args.warmup, timeout_s=args.timeout,
                       ignore_eos=args.ignore_eos, out_dir=args.out_dir, stop_on_error=args.stop_on_error,
-                      order=args.order)
+                      order=args.order, warmup_cells=args.warmup_cells)
         bench, summary = concurrent.run_concurrent_benchmark, concurrent.print_summary
 
     if args.launch_server:

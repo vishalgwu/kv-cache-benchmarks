@@ -71,19 +71,23 @@ def plan_cells(levels: list, concurrencies: list) -> list:
     return [(lv, n) for lv in levels for n in concurrencies]
 
 
-def select_prompts(prompts: list, levels: list, concurrencies: list) -> tuple:
-    """Per level: the first N prompts are measured, the next N (starting after the largest N) are the
-    warmup wave's, so a warmup never reuses a measured prompt."""
+def select_prompts(prompts: list, levels: list, concurrencies: list, warmup_cells: str = "all") -> tuple:
+    """Per level: the first N prompts are measured; the warmup wave's prompts come after the largest N so a
+    warmup never reuses a measured prompt. ``warmup_cells`` "all" warms every cell (needs 2 x max N prompts),
+    "smallest" warms only the smallest-N cell of each level (needs max N + min N)."""
+    if warmup_cells not in ("all", "smallest"):
+        raise ValueError(f"unknown warmup_cells {warmup_cells!r}")
     top = max(concurrencies)
+    spare = top if warmup_cells == "all" else min(concurrencies)
     measured, warm = {}, {}
     for lv in levels:
         at_level = [p for p in prompts if p["level"] == lv]
-        if len(at_level) < 2 * top:
-            raise ValueError(f"level {lv}: {len(at_level)} prompts, need {2 * top} "
-                             f"(max concurrency {top} measured + {top} spare for warmup waves); "
-                             f"generate per_level >= {2 * top}")
+        if len(at_level) < top + spare:
+            raise ValueError(f"level {lv}: {len(at_level)} prompts, need {top + spare} "
+                             f"(max concurrency {top} measured + {spare} spare for warmup waves); "
+                             f"generate per_level >= {top + spare}")
         measured[lv] = at_level[:top]
-        warm[lv] = at_level[top:2 * top]
+        warm[lv] = at_level[top:top + spare]
     return measured, warm
 
 
@@ -94,12 +98,12 @@ def run_concurrent_benchmark(*, workload_dir: pathlib.Path, host: str, port: int
                              order: str = "rotate", clock: Callable[[], float] = time.monotonic,
                              server_log: Optional[str] = None,
                              monitor: Optional[sampling.MemoryMonitor] = None,
-                             baseline_s: float = 0.0) -> tuple:
+                             baseline_s: float = 0.0, warmup_cells: str = "all") -> tuple:
     if not concurrencies or min(concurrencies) < 1:
         raise ValueError("concurrencies must be positive integers")
     wl_manifest, prompts = runner.load_workload(workload_dir)
     level_list = list(levels or wl_manifest["levels"])
-    measured_by_level, warm_by_level = select_prompts(prompts, level_list, concurrencies)
+    measured_by_level, warm_by_level = select_prompts(prompts, level_list, concurrencies, warmup_cells)
     max_tokens = wl_manifest["output_target_tokens"]
     cells = plan_cells(level_list, concurrencies)
 
@@ -115,7 +119,8 @@ def run_concurrent_benchmark(*, workload_dir: pathlib.Path, host: str, port: int
         "waves_per_cell": waves_per_cell,
         "cell_order": order,
         "warmup_requests": warmup,
-        "warmup_wave_per_cell": True,
+        "warmup_wave_per_cell": warmup_cells == "all",
+        "warmup_cells": warmup_cells,
         "workload_id": wl_manifest["workload_id"],
         "measured_prompt_ids": {str(lv): [p["prompt_id"] for p in measured_by_level[lv][:max(concurrencies)]]
                                 for lv in level_list},
@@ -151,7 +156,8 @@ def run_concurrent_benchmark(*, workload_dir: pathlib.Path, host: str, port: int
 
     # (cell, wave index, is_warmup): short warmup is handled separately below
     orders = runner.level_order(cells, waves_per_cell, order)
-    schedule = ([(c, 0, True) for c in cells]
+    warm_cells = cells if warmup_cells == "all" else [(lv, min(concurrencies)) for lv in level_list]
+    schedule = ([(c, 0, True) for c in warm_cells]
                 + [(c, w, False) for w in range(waves_per_cell) for c in orders[w]])
 
     records, counts = [], {"requests": 0, "ok": 0, "errors": 0, "warmup": 0, "usable": 0}
