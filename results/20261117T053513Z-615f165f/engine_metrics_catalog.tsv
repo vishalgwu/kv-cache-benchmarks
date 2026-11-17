@@ -1,0 +1,105 @@
+name	type	help
+vllm:admission_rejections_created	gauge	Number of admission attempts rejected by a queue limit, by reason.
+vllm:admission_rejections_total	counter	Number of admission attempts rejected by a queue limit, by reason.
+vllm:cache_config_info	gauge	Information of the LLMEngine CacheConfig
+vllm:e2e_request_latency_seconds_bucket		
+vllm:e2e_request_latency_seconds_count		
+vllm:e2e_request_latency_seconds_created	gauge	Histogram of e2e request latency in seconds.
+vllm:e2e_request_latency_seconds_sum		
+vllm:engine_sleep_state	gauge	Engine sleep state; awake = 0 means engine is sleeping; awake = 1 means engine is awake; weights_offloaded = 1 means sleep level 1; discard_all = 1 means sleep level 2.
+vllm:estimated_flops_per_gpu_created	gauge	Estimated number of floating point operations per GPU (for Model Flops Utilization calculations).
+vllm:estimated_flops_per_gpu_total	counter	Estimated number of floating point operations per GPU (for Model Flops Utilization calculations).
+vllm:estimated_read_bytes_per_gpu_created	gauge	Estimated number of bytes read from memory per GPU (for Model Flops Utilization calculations).
+vllm:estimated_read_bytes_per_gpu_total	counter	Estimated number of bytes read from memory per GPU (for Model Flops Utilization calculations).
+vllm:estimated_write_bytes_per_gpu_created	gauge	Estimated number of bytes written to memory per GPU (for Model Flops Utilization calculations).
+vllm:estimated_write_bytes_per_gpu_total	counter	Estimated number of bytes written to memory per GPU (for Model Flops Utilization calculations).
+vllm:external_prefix_cache_hits_created	gauge	External prefix cache hits from KV connector cross-instance cache sharing, in terms of number of cached tokens.
+vllm:external_prefix_cache_hits_total	counter	External prefix cache hits from KV connector cross-instance cache sharing, in terms of number of cached tokens.
+vllm:external_prefix_cache_queries_created	gauge	External prefix cache queries from KV connector cross-instance cache sharing, in terms of number of queried tokens.
+vllm:external_prefix_cache_queries_total	counter	External prefix cache queries from KV connector cross-instance cache sharing, in terms of number of queried tokens.
+vllm:generation_tokens_created	gauge	Number of generation tokens processed.
+vllm:generation_tokens_total	counter	Number of generation tokens processed.
+vllm:inter_token_latency_seconds_bucket		
+vllm:inter_token_latency_seconds_count		
+vllm:inter_token_latency_seconds_created	gauge	Histogram of inter-token latency in seconds.
+vllm:inter_token_latency_seconds_sum		
+vllm:iteration_tokens_total_bucket		
+vllm:iteration_tokens_total_count		
+vllm:iteration_tokens_total_created	gauge	Histogram of number of tokens per engine_step.
+vllm:iteration_tokens_total_sum		
+vllm:kv_cache_usage_perc	gauge	KV-cache usage. 1 means 100 percent usage.
+vllm:mm_cache_hits_created	gauge	Multi-modal cache hits, in terms of number of cached items.
+vllm:mm_cache_hits_total	counter	Multi-modal cache hits, in terms of number of cached items.
+vllm:mm_cache_queries_created	gauge	Multi-modal cache queries, in terms of number of queried items.
+vllm:mm_cache_queries_total	counter	Multi-modal cache queries, in terms of number of queried items.
+vllm:num_preemptions_created	gauge	Cumulative number of preemption from the engine.
+vllm:num_preemptions_total	counter	Cumulative number of preemption from the engine.
+vllm:num_requests_running	gauge	Number of requests in model execution batches.
+vllm:num_requests_waiting	gauge	Number of requests waiting to be processed.
+vllm:num_requests_waiting_by_reason	gauge	Number of waiting requests by reason. Reason labels: 'capacity' = waiting for scheduling capacity; 'deferred' = deferred by transient constraints (LoRA budget, KV transfer, blocked status). Sum of all reasons equals vllm:num_requests_waiting.
+vllm:prefix_cache_hits_created	gauge	Prefix cache hits, in terms of number of cached tokens.
+vllm:prefix_cache_hits_total	counter	Prefix cache hits, in terms of number of cached tokens.
+vllm:prefix_cache_queries_created	gauge	Prefix cache queries, in terms of number of queried tokens.
+vllm:prefix_cache_queries_total	counter	Prefix cache queries, in terms of number of queried tokens.
+vllm:prompt_tokens_by_source_created	gauge	Number of prompt tokens by source.
+vllm:prompt_tokens_by_source_total	counter	Number of prompt tokens by source.
+vllm:prompt_tokens_cached_by_source_created	gauge	Prefix-cache hit tokens by the cache tier that supplied them: device (local HBM), host (offloaded to DRAM), disk, p2p (transferred from another vLLM instance) or external_unspecified. Counted at admission; sums to vllm:prefix_cache_hits + vllm:external_prefix_cache_hits.
+vllm:prompt_tokens_cached_by_source_total	counter	Prefix-cache hit tokens by the cache tier that supplied them: device (local HBM), host (offloaded to DRAM), disk, p2p (transferred from another vLLM instance) or external_unspecified. Counted at admission; sums to vllm:prefix_cache_hits + vllm:external_prefix_cache_hits.
+vllm:prompt_tokens_cached_created	gauge	Number of cached prompt tokens (local + external).
+vllm:prompt_tokens_cached_total	counter	Number of cached prompt tokens (local + external).
+vllm:prompt_tokens_created	gauge	Number of prefill tokens processed.
+vllm:prompt_tokens_total	counter	Number of prefill tokens processed.
+vllm:request_decode_time_seconds_bucket		
+vllm:request_decode_time_seconds_count		
+vllm:request_decode_time_seconds_created	gauge	Histogram of time spent in DECODE phase for request.
+vllm:request_decode_time_seconds_sum		
+vllm:request_generation_tokens_bucket		
+vllm:request_generation_tokens_count		
+vllm:request_generation_tokens_created	gauge	Number of generation tokens processed.
+vllm:request_generation_tokens_sum		
+vllm:request_inference_time_seconds_bucket		
+vllm:request_inference_time_seconds_count		
+vllm:request_inference_time_seconds_created	gauge	Histogram of time spent in RUNNING phase for request.
+vllm:request_inference_time_seconds_sum		
+vllm:request_max_num_generation_tokens_bucket		
+vllm:request_max_num_generation_tokens_count		
+vllm:request_max_num_generation_tokens_created	gauge	Histogram of maximum number of requested generation tokens.
+vllm:request_max_num_generation_tokens_sum		
+vllm:request_num_preemptions_bucket		
+vllm:request_num_preemptions_count		
+vllm:request_num_preemptions_created	gauge	Histogram of the number of times a request was preempted.
+vllm:request_num_preemptions_sum		
+vllm:request_params_max_tokens_bucket		
+vllm:request_params_max_tokens_count		
+vllm:request_params_max_tokens_created	gauge	Histogram of the max_tokens request parameter.
+vllm:request_params_max_tokens_sum		
+vllm:request_params_n_bucket		
+vllm:request_params_n_count		
+vllm:request_params_n_created	gauge	Histogram of the n request parameter.
+vllm:request_params_n_sum		
+vllm:request_prefill_kv_computed_tokens_bucket		
+vllm:request_prefill_kv_computed_tokens_count		
+vllm:request_prefill_kv_computed_tokens_created	gauge	Histogram of new KV tokens computed during prefill (excluding cached tokens).
+vllm:request_prefill_kv_computed_tokens_sum		
+vllm:request_prefill_time_seconds_bucket		
+vllm:request_prefill_time_seconds_count		
+vllm:request_prefill_time_seconds_created	gauge	Histogram of time spent in PREFILL phase for request.
+vllm:request_prefill_time_seconds_sum		
+vllm:request_prompt_tokens_bucket		
+vllm:request_prompt_tokens_count		
+vllm:request_prompt_tokens_created	gauge	Number of prefill tokens processed.
+vllm:request_prompt_tokens_sum		
+vllm:request_queue_time_seconds_bucket		
+vllm:request_queue_time_seconds_count		
+vllm:request_queue_time_seconds_created	gauge	Histogram of time spent in WAITING phase for request.
+vllm:request_queue_time_seconds_sum		
+vllm:request_success_created	gauge	Count of successfully processed requests.
+vllm:request_success_total	counter	Count of successfully processed requests.
+vllm:request_time_per_output_token_seconds_bucket		
+vllm:request_time_per_output_token_seconds_count		
+vllm:request_time_per_output_token_seconds_created	gauge	Histogram of time_per_output_token_seconds per request.
+vllm:request_time_per_output_token_seconds_sum		
+vllm:time_to_first_token_seconds_bucket		
+vllm:time_to_first_token_seconds_count		
+vllm:time_to_first_token_seconds_created	gauge	Histogram of time to first token in seconds.
+vllm:time_to_first_token_seconds_sum		

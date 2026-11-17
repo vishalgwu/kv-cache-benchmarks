@@ -107,7 +107,14 @@
     "config_hash": "53df2b8037a89991",
     "purpose": "Validate the GPU, engine /metrics, and CPU samplers on real hardware. Not a baseline.",
     "launch_flag_confirmed": "--generation-config vllm was accepted (non-default args in server.log show generation_config 'vllm') and the 'overridden by the model's generation_config.json' warning is gone.",
-    "engine_metric_names_confirmed": ["vllm:kv_cache_usage_perc", "vllm:num_requests_running", "vllm:num_requests_waiting", "vllm:num_preemptions_total", "vllm:prefix_cache_hits_total", "vllm:prefix_cache_queries_total"],
+    "engine_metric_names_confirmed": [
+      "vllm:kv_cache_usage_perc",
+      "vllm:num_requests_running",
+      "vllm:num_requests_waiting",
+      "vllm:num_preemptions_total",
+      "vllm:prefix_cache_hits_total",
+      "vllm:prefix_cache_queries_total"
+    ],
     "kv_cache_usage_scale": "fraction of the pool (0 to 1)",
     "gpu_sampler": "NVML, 113 samples at a 0.25 s interval (max gap 0.2515 s), 0 read errors",
     "device_memory": {
@@ -135,12 +142,28 @@
     "repeat_run": "Eager-off repeated as 20261117T041433Z-acb4745b with the same config hash; per-level medians agree with the first run within 1 percent (largest difference 0.87 percent, decode at 8K). Cannot say whether the session or the physical GPU was the same.",
     "cross_mode_outputs": "8 of 10 prompts are bit-identical across eager-on, eager-off and the repeat. Both 8K prompts differ between eager and graphs only in the last few characters (about token 125 of 128); graphs-vs-graphs and eager-vs-eager are exact.",
     "kv_pool": "final pool 325,632 tokens / 8.70 GiB (eager) vs 309,248 tokens / 8.26 GiB (graphs, 0.41 GiB graph memory): 5.0 percent less capacity; both equal tokens x 28,672 bytes.",
-    "decode_speedup_graphs_over_eager": {"1024": 1.89, "4096": 1.90, "8192": 1.56},
-    "e2e_ratio_eager_over_graphs": {"1024": 1.79, "4096": 1.39, "8192": 1.11},
+    "decode_speedup_graphs_over_eager": {
+      "1024": 1.89,
+      "4096": 1.9,
+      "8192": 1.56
+    },
+    "e2e_ratio_eager_over_graphs": {
+      "1024": 1.79,
+      "4096": 1.39,
+      "8192": 1.11
+    },
     "eager_first_trial_faster": "In both eager-on runs the first trial was faster than later trials at 1K (0.28-0.30 s vs 0.31 s) and at 4K in the repeat; not seen with graphs. Cause unknown (clocks, CPU state, allocator?), not tested.",
     "observed_not_conclusions": {
-      "ttft_median_s": {"1024": 0.322, "4096": 3.250, "8192": 11.862},
-      "decode_tokens_per_s_median": {"1024": 50.0, "4096": 49.7, "8192": 41.6},
+      "ttft_median_s": {
+        "1024": 0.322,
+        "4096": 3.25,
+        "8192": 11.862
+      },
+      "decode_tokens_per_s_median": {
+        "1024": 50.0,
+        "4096": 49.7,
+        "8192": 41.6
+      },
       "gpu_util_decode_pct": "100 with CUDA graphs (eager mode earlier: 49-61)",
       "determinism": "all 6 prompts bit-identical across 3 trials",
       "pool": "eager off: 309,248 tokens (0.41 GiB CUDA graph memory); eager on (pasted startup): 325,632 tokens"
@@ -158,16 +181,47 @@
     "metrics_endpoint": "The server's route table lists /metrics, /health and /load, so engine cache usage and running/waiting counts should be readable in Step 6."
   },
   "open_items": [
-        "Obtain raw files for the eager-on pilot run (6f8b82fb) or re-run it on the pinned version",
     "Measure container memory without page cache (memory.stat anon) before the Step 9 offload experiment",
-    "A/B test enforce_eager true vs false on the T4 (decode used about 50% GPU in eager mode) and fix the setting for the sweep",
-    "Decide ignore_eos for the sweep (1 of 4 measured requests stopped early at 113 of 128 tokens)",
     "Read the cgroup memory limit on the next run to explain why vLLM saw 3.85 GiB available RAM while /proc/meminfo showed 27 GiB",
     "Confirm the prefix-cache counters stay flat over a run (run-level deltas in the manifest)",
-    "Add a same-prompt-twice determinism check (greedy decoding, one server)",
-    "Launch the server ONCE with a fixed max_model_len (32768) for the whole sweep so cache capacity is identical across cells",
-    "Add a warmup request at each context length (a 37-token warmup does not warm the shapes of a 1K-32K prefill)",
-    "Decide benchmark-time vLLM settings: max_model_len (32768 for the long-context cells), prefix caching off, enforce_eager or not",
-    "Commit a dependency lock for the key packages (configs/requirements.lock.txt)"
-  ]
+    "Why decode tok/s is faster at 1K with graphs on while the GPU clock is lowest there (clock confounder; needs clock-controlled or more samples)",
+    "Explain the 20 percent 8K decode slowdown with graphs and the order-independent TTFT stability seen in the sweep"
+  ],
+  "step7_sweep": {
+    "run_id": "20261117T053513Z-615f165f",
+    "also_run_console_only": "20261117T050504Z-615f165f (same config hash, same session; files not saved; medians within 0.3 percent of the committed run)",
+    "config": "levels 1024/4096/8192/16384/32000, 2 prompts per level, 3 trials, rotated level order (trial 0 ascending), per-level warmup, 128 output tokens forced, enforce_eager OFF, max_model_len 32768, vLLM 0.34.0 pinned",
+    "result_failures": 0,
+    "ttft_median_s": {
+      "1024": 0.316,
+      "4096": 3.238,
+      "8192": 11.845,
+      "16384": 45.005,
+      "32000": 166.809
+    },
+    "decode_median_tok_s": {
+      "1024": 53.6,
+      "4096": 49.7,
+      "8192": 41.4,
+      "16384": 32.5,
+      "32000": 22.8
+    },
+    "kv_usage_peak": {
+      "1024": 0.0037,
+      "4096": 0.0137,
+      "8192": 0.0269,
+      "16384": 0.0534,
+      "32000": 0.1039
+    },
+    "log_log_slope_ttft": [
+      1.68,
+      1.87,
+      1.93,
+      1.96
+    ],
+    "quadratic_extrapolation_check": "a quadratic fitted to the 1K/4K/8K pilot-style medians predicted 16K and 32K within 1 percent (45.2 vs 45.0 s; 168.4 vs 166.8 s)",
+    "gpu_state": "throttle reason 4 (software power cap) in 99.8 percent of samples; SM clock 585-1575 MHz; temperature 67-82 C; power median 68 W (T4 limit 70 W)",
+    "caveat": "one device, one model, one engine version, concurrency 1, n = 6 per level; decode speed per level is confounded with SM clock (median decode clock 645 MHz at 1K vs 1380 MHz at 32K, from a few samples)",
+    "off_by_one_prompts": "L4096-002 (4095), L8192-002 (8191), L16384-001 (16383) re-tokenize one token short of their level; the manifest and engine counts agree, so the label is the target and the true count is stored per record"
+  }
 }
