@@ -11,7 +11,7 @@ Each run writes ``results/<run_id>/``:
 Every request produces a record, even on failure. A record only counts toward
 analysis when ``usable_for_analysis`` is true: status ok, not a warmup, and no
 validation errors. Token counts come from engine usage; they are never inferred
-from chunk counts. Concurrency above 1 belongs to Step 8 and is rejected here.
+from chunk counts. Concurrency above 1 is rejected here; fixed-concurrency waves live in benchmarks/concurrent.py (Step 8).
 """
 
 from __future__ import annotations
@@ -392,6 +392,9 @@ def main() -> None:
                     help="disable natural stopping; recorded in the config and every record")
     ap.add_argument("--no-stop-on-error", dest="stop_on_error", action="store_false")
     ap.add_argument("--concurrency", type=int, default=1)
+    ap.add_argument("--concurrency-levels", type=int, nargs="+",
+                    help="Step 8: run fixed-concurrency waves at each of these N (see benchmarks/concurrent.py)")
+    ap.add_argument("--waves", type=int, default=3, help="waves per (level, N) cell with --concurrency-levels")
     ap.add_argument("--out-dir", type=pathlib.Path, default=pathlib.Path("results"))
     ap.add_argument("--sample-memory", action=argparse.BooleanOptionalAction, default=True,
                     help="sample GPU memory, engine /metrics, and CPU memory during the run")
@@ -413,6 +416,15 @@ def main() -> None:
                   ignore_eos=args.ignore_eos, out_dir=args.out_dir,
                   stop_on_error=args.stop_on_error, concurrency=args.concurrency,
                   warmup_per_level=args.warmup_per_level, order=args.order)
+    bench, summary = run_benchmark, print_summary
+    if args.concurrency_levels:
+        from benchmarks import concurrent
+        kwargs = dict(workload_dir=args.workload_dir, host=args.host, port=args.port, model=model,
+                      revision=revision, levels=levels, concurrencies=args.concurrency_levels,
+                      waves_per_cell=args.waves, warmup=args.warmup, timeout_s=args.timeout,
+                      ignore_eos=args.ignore_eos, out_dir=args.out_dir, stop_on_error=args.stop_on_error,
+                      order=args.order)
+        bench, summary = concurrent.run_concurrent_benchmark, concurrent.print_summary
 
     if args.launch_server:
         max_len = args.max_model_len or (max(levels) + wl_manifest["output_target_tokens"] + 64)
@@ -425,18 +437,17 @@ def main() -> None:
                                    enforce_eager=args.enforce_eager, log_path=log_path)
         with server:
             monitor = make_monitor(args, server.pid)
-            run_dir, records = run_benchmark(server_settings=server.settings, server_log=log_path,
-                                             monitor=monitor, baseline_s=args.baseline_seconds,
-                                             **kwargs)
+            run_dir, records = bench(server_settings=server.settings, server_log=log_path,
+                                     monitor=monitor, baseline_s=args.baseline_seconds, **kwargs)
         # keep the server log with the run it belongs to
         try:
             (run_dir / "server.log").write_bytes(pathlib.Path(log_path).read_bytes())
         except OSError:
             pass
     else:
-        run_dir, records = run_benchmark(server_settings=None, monitor=make_monitor(args, None),
-                                         baseline_s=args.baseline_seconds, **kwargs)
-    print_summary(run_dir, records)
+        run_dir, records = bench(server_settings=None, monitor=make_monitor(args, None),
+                                 baseline_s=args.baseline_seconds, **kwargs)
+    summary(run_dir, records)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ from typing import Iterable, Optional
 from benchmarks import runner, sampling
 
 TAIL_MIN_SAMPLES = {"p95": 20, "p99": 100}
-REQUEST_SCHEMAS = {"kv-bench-request/1", "kv-bench-request/2"}
+REQUEST_SCHEMAS = {"kv-bench-request/1", "kv-bench-request/2", "kv-bench-request/3"}
 
 
 def load_records(path: pathlib.Path) -> list:
@@ -204,6 +204,9 @@ def validate_run_dir(run_dir: pathlib.Path) -> list:
                 problems.append(f"{rid}: ttft_s cannot be recomputed from timestamps")
         if "memory" in r:
             problems += [f"{rid}: {e}" for e in sampling.validate_memory_block(r["memory"])]
+    if any("wave_id" in r for r in records):
+        from benchmarks import waves  # local import: waves imports this module
+        problems += waves.validate_waves(records)
     return problems
 
 
@@ -217,7 +220,11 @@ def main() -> None:
     for p in problems:
         print("  -", p)
     records = load_records(run_dir / "requests.jsonl")
-    if "--table" in sys.argv:
+    if "--table" in sys.argv and any("wave_id" in r for r in records):
+        from benchmarks import waves
+        print(waves.format_cell_table(records))
+        print("batch invariance:", json.dumps(waves.batch_invariance(records)))
+    elif "--table" in sys.argv:
         print(format_level_table(records))
         print("determinism:", json.dumps(determinism(records)))
     else:
