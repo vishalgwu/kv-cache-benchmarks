@@ -138,6 +138,15 @@ def read_gpu_nvidia_smi(gpu_index: int = 0, timeout_s: float = 5.0) -> dict:
             "source": "nvidia-smi", "scope": "device"}
 
 
+def _throttle_mask(pynvml, handle) -> int:
+    """Current clock-throttle reason bitmask (NVML renamed the call across versions)."""
+    for name in ("nvmlDeviceGetCurrentClocksEventReasons", "nvmlDeviceGetCurrentClocksThrottleReasons"):
+        fn = getattr(pynvml, name, None)
+        if fn is not None:
+            return fn(handle)
+    raise RuntimeError("no throttle-reason call in this NVML binding")
+
+
 def make_gpu_reader(gpu_index: int = 0) -> Callable[[], dict]:
     """Prefer NVML (lower overhead); fall back to calling nvidia-smi.
 
@@ -153,8 +162,22 @@ def make_gpu_reader(gpu_index: int = 0) -> Callable[[], dict]:
         def read() -> dict:
             mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
             util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            return {"memory_used_mib": mem.used / MIB, "memory_total_mib": mem.total / MIB,
-                    "gpu_util_pct": float(util.gpu), "source": "nvml", "scope": "device"}
+            out = {"memory_used_mib": mem.used / MIB, "memory_total_mib": mem.total / MIB,
+                   "gpu_util_pct": float(util.gpu), "source": "nvml", "scope": "device"}
+            # Best-effort extras for long runs (thermal or power throttling would bias later trials).
+            # Each is None when the driver does not offer it; they never break the memory reading.
+            extras = {
+                "temperature_c": lambda: float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)),
+                "sm_clock_mhz": lambda: float(pynvml.nvmlDeviceGetClockInfo(handle, pynvml.NVML_CLOCK_SM)),
+                "power_w": lambda: pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0,
+                "throttle_reasons_mask": lambda: int(_throttle_mask(pynvml, handle)),
+            }
+            for key, fn in extras.items():
+                try:
+                    out[key] = fn()
+                except Exception:
+                    out[key] = None
+            return out
 
         read()  # fail now, not on the sampler thread
         return read
@@ -409,6 +432,12 @@ class MemoryMonitor:
                   "used_mib_at_window_start": start,
                   "peak_minus_window_start_mib": (peak - start) if (peak is not None and start is not None)
                   else None,
+                  "sm_clock_mhz_min_in_window": window_stat(samples, t0, t1, "sm_clock_mhz", min)[0],
+                  "temperature_c_max_in_window": window_stat(samples, t0, t1, "temperature_c", max)[0],
+                  "power_w_max_in_window": window_stat(samples, t0, t1, "power_w", max)[0],
+                  "throttle_reasons_seen_in_window": sorted({
+                      s["throttle_reasons_mask"] for s in in_window(samples, t0, t1)
+                      if s.get("throttle_reasons_mask") is not None}) or None,
                   "n_samples_in_window": n, "peak_note": "sampled peak; a lower bound on the true peak",
                   "retention_note": "the allocator keeps memory after a request ends, so a window's peak "
                                     "includes growth from earlier requests; peak_minus_window_start_mib is "

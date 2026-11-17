@@ -137,6 +137,29 @@ def determinism(records: list) -> dict:
                      "recorded, not hidden") if rep else "no prompt was repeated"}
 
 
+def format_level_table(records: list) -> str:
+    """Compact per-level table (medians with min-max, n always shown). Prefill speed is the input
+    length over the median TTFT, so it includes queueing and transport; it is a client-side figure."""
+    by = summarize_by_level(records)
+    rows = {int(k): v for k, v in by.items()}
+    ok = usable(records)
+    head = (f"{'input':>7} {'n':>3} {'ttft med [min-max] s':>26} {'prefill tok/s':>14} "
+            f"{'decode med [min-max] tok/s':>28} {'e2e med s':>10} {'kv peak':>8}")
+    lines = [head]
+    for lv in sorted(rows):
+        v = rows[lv]
+        t, d, e = v["ttft_s"], v["decode_tokens_per_s"], v["e2e_latency_s"]
+        kv = [r["memory"]["engine"].get("kv_cache_usage_peak") for r in ok
+              if r["target_input_tokens"] == lv and "memory" in r]
+        kv = [x for x in kv if x is not None]
+        ttft = f"{t['median']:.3f} [{t['min']:.3f}-{t['max']:.3f}]"
+        dec = f"{d['median']:.1f} [{d['min']:.1f}-{d['max']:.1f}]"
+        kvs = f"{max(kv):.4f}" if kv else "n/a"
+        lines.append(f"{lv:>7} {v['n']:>3} {ttft:>26} {lv / t['median']:>14.0f} {dec:>28} "
+                     f"{e['median']:>10.2f} {kvs:>8}")
+    return "\n".join(lines)
+
+
 def validate_run_dir(run_dir: pathlib.Path) -> list:
     """Cross-check a run directory. Returns problems; an empty list means consistent."""
     run_dir = pathlib.Path(run_dir)
@@ -185,14 +208,20 @@ def validate_run_dir(run_dir: pathlib.Path) -> list:
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        sys.exit("usage: python -m benchmarks.metrics results/<run_id>")
-    run_dir = pathlib.Path(sys.argv[1])
+    args = [a for a in sys.argv[1:] if a != "--table"]
+    if len(args) != 1:
+        sys.exit("usage: python -m benchmarks.metrics [--table] results/<run_id>")
+    run_dir = pathlib.Path(args[0])
     problems = validate_run_dir(run_dir)
     print("validation:", "OK" if not problems else f"{len(problems)} problem(s)")
     for p in problems:
         print("  -", p)
-    print(json.dumps(summarize_run(load_records(run_dir / "requests.jsonl")), indent=2))
+    records = load_records(run_dir / "requests.jsonl")
+    if "--table" in sys.argv:
+        print(format_level_table(records))
+        print("determinism:", json.dumps(determinism(records)))
+    else:
+        print(json.dumps(summarize_run(records), indent=2))
     sys.exit(1 if problems else 0)
 
 
