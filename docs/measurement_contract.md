@@ -81,6 +81,10 @@ Sampled on background threads in the runner process, on the same monotonic clock
 10. **The engine's occupancy reproduces the size formula, with these inferred details.** Reported usage equals `ceil((prompt + output - 1) / 16) / (total_blocks - 1)`: 16-token blocks, one block reserved by the engine, and the last generated token not yet cached. This held to six digits for all four measured requests in the first real run. It is inferred from the data, not read from vLLM's documentation.
 11. **Counters can lag.** Engine counters (preemptions, prefix-cache hits) may update just after a request ends, so one window can under-report by a request. Use the run-level deltas in `run_manifest.json` (`memory_monitoring.engine_counter_deltas_over_run`).
 
+12. **Block size is engine- and version-specific; read it from the log.** vLLM 0.33.0 runs implied 16-token blocks; the 0.34.0 pilot reports 4832 blocks for 309,248 tokens (64 tokens per block) and the formula `ceil((prompt + output - 1) / 64) / (blocks - 1)` reproduced every request exactly (error 1e-17). The runner now stores `kv_cache_blocks` and `kv_block_size_tokens` parsed from the log; a different block size (32 with 2 reserved) fits the same three levels, so the log's block count, not curve fitting, decides it.
+13. **cgroup `memory.current` includes page cache.** In the pilot it read about 26.9 GiB (limit 30 GiB) while the server tree RSS was 4.6 GiB, flat across the run. It is a ceiling, not the server's footprint, and cannot be used for offload headroom. vLLM's own startup line said "Available RAM 4.33 GiB", which matches neither number; unresolved.
+14. **Record the installed package versions.** Manifests now carry `package_versions`; the Step 7 pilot ran on vLLM 0.34.0 although the plan pinned 0.33.0.
+
 ### Engine metric names
 
 vLLM metric names change between versions. The runner records the engine's actual catalog (name, type, HELP) in `engine_metrics_catalog.tsv` for each run and looks for the canonical metrics under known candidate names. A metric the engine does not expose is `unavailable`, not zero.

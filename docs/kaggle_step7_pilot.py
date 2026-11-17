@@ -25,8 +25,15 @@ if os.path.isdir(REPO):
 else:
     print(sh(f"git clone https://github.com/vishalgwu/kv-cache-benchmarks.git {REPO}", cwd=WORK)[1][-300:])
 print("commit:", sh("git log --oneline -1")[1])
-if sh("pip show vllm")[0] != 0:
-    print("installing vllm..."); print(sh("pip install -q vllm", timeout=1800)[1][-300:])
+# Install exactly the vLLM version in the lock (never "latest"), then verify the whole lock.
+LOCKED_VLLM = [l.split("==")[1].split("#")[0].strip() for l in open(f"{REPO}/configs/requirements.lock.txt")
+               if l.startswith("vllm==")][0]
+if sh(f"python -m benchmarks.envcheck")[0] != 0:
+    print(f"installing vllm=={LOCKED_VLLM} ..."); print(sh(f"pip install -q vllm=={LOCKED_VLLM}", timeout=1800)[1][-300:])
+rc, out = sh("python -m benchmarks.envcheck")
+print("== environment vs lock =="); print(out)
+if rc != 0:
+    raise SystemExit("vllm does not match the lock; stopping before any benchmark")
 
 print("== tests =="); print(sh("python -m pytest tests -q")[1][-200:])
 

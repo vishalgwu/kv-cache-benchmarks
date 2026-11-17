@@ -321,8 +321,16 @@ def parse_vllm_startup_log(text: str) -> dict:
                       r"([\d.]+) GiB for peak activation, and ([\d.]+) GiB for CUDAGraph", text)
     free = re.search(r"Free memory on device \(([\d.]+)/([\d.]+) GiB\)", text)
     backend = re.search(r"Using (\w+) attention backend", text)
+    version = re.search(r"Initializing a V1 LLM engine \(v([\w.+-]+)\)", text)
+    blocks = re.search(r"([\d,]+) KV cache blocks|Extended KV cache to ([\d,]+) blocks", text)
+    n_blocks = int((blocks.group(1) or blocks.group(2)).replace(",", "")) if blocks else None
+    tokens = first(r"GPU KV cache size: ([\d,]+) tokens", int)
+    block_size = tokens // n_blocks if (n_blocks and tokens and tokens % n_blocks == 0) else None
     return {
         "source": "vLLM server log (engine-reported)",
+        "vllm_version_in_log": version.group(1) if version else None,
+        "kv_cache_blocks": n_blocks,
+        "kv_block_size_tokens": block_size,
         "model_loading_gib": first(r"Model loading took ([\d.]+) GiB"),
         "available_kv_cache_gib": first(r"Available KV cache memory: ([\d.]+) GiB"),
         "kv_cache_tokens": first(r"GPU KV cache size: ([\d,]+) tokens", int),

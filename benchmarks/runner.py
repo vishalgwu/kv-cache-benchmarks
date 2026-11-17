@@ -141,6 +141,31 @@ def validate_record(rec: dict) -> list:
 
 
 # ----------------------------------------------------------------------------- run
+TRACKED_PACKAGES = ("vllm", "torch", "transformers", "tokenizers", "huggingface_hub", "numpy")
+
+
+def installed_versions(names=TRACKED_PACKAGES) -> dict:
+    """Versions actually installed in this interpreter (None when absent). Recorded in every
+    manifest because an unpinned install once silently moved vLLM from 0.33.0 to 0.34.0."""
+    from importlib import metadata
+    out = {}
+    for name in names:
+        try:
+            out[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            out[name] = None
+    return out
+
+
+def _lock_mismatches():
+    """Installed-vs-lock differences, or None when no lock file is present (e.g. in tests)."""
+    from benchmarks import envcheck
+    try:
+        return envcheck.check()
+    except Exception:  # never let a version check break a run
+        return None
+
+
 def _git_commit() -> Optional[str]:
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5)
@@ -235,6 +260,8 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
         "git_commit": _git_commit(),
         "environment_json_sha256": _file_sha256(pathlib.Path("configs/environment.json")),
         "python": platform.python_version(),
+        "package_versions": installed_versions(),
+        "lock_mismatches": _lock_mismatches(),
         "platform": platform.platform(),
         "server_log": server_log,
         "finished_utc": None,
