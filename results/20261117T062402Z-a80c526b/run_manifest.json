@@ -1,0 +1,237 @@
+{
+  "config": {
+    "cell_order": "rotate",
+    "concurrency_levels": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "engine": "vllm-openai-chat-stream",
+    "levels": [
+      1024,
+      4096,
+      8192
+    ],
+    "load_policy": "closed waves: N distinct prompts of one length are submitted together; the next wave starts after all N have finished",
+    "measured_prompt_ids": {
+      "1024": [
+        "L1024-000",
+        "L1024-001",
+        "L1024-002",
+        "L1024-003",
+        "L1024-004",
+        "L1024-005",
+        "L1024-006",
+        "L1024-007",
+        "L1024-008",
+        "L1024-009",
+        "L1024-010",
+        "L1024-011",
+        "L1024-012",
+        "L1024-013",
+        "L1024-014",
+        "L1024-015"
+      ],
+      "4096": [
+        "L4096-000",
+        "L4096-001",
+        "L4096-002",
+        "L4096-003",
+        "L4096-004",
+        "L4096-005",
+        "L4096-006",
+        "L4096-007",
+        "L4096-008",
+        "L4096-009",
+        "L4096-010",
+        "L4096-011",
+        "L4096-012",
+        "L4096-013",
+        "L4096-014",
+        "L4096-015"
+      ],
+      "8192": [
+        "L8192-000",
+        "L8192-001",
+        "L8192-002",
+        "L8192-003",
+        "L8192-004",
+        "L8192-005",
+        "L8192-006",
+        "L8192-007",
+        "L8192-008",
+        "L8192-009",
+        "L8192-010",
+        "L8192-011",
+        "L8192-012",
+        "L8192-013",
+        "L8192-014",
+        "L8192-015"
+      ]
+    },
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "sampling": {
+      "ignore_eos": true,
+      "max_tokens": 128,
+      "temperature": 0
+    },
+    "schema": "kv-bench-run-config/2",
+    "server": {
+      "cuda_visible_devices": "0",
+      "dtype": "float16",
+      "enable_prefix_caching": false,
+      "enforce_eager": false,
+      "engine": "vllm serve",
+      "extra_args": [],
+      "generation_config": "vllm",
+      "gpu_memory_utilization": 0.85,
+      "max_model_len": 32768
+    },
+    "stop_on_error": true,
+    "timeout_s": 900.0,
+    "warmup_prompt_ids": {
+      "1024": [
+        "L1024-016",
+        "L1024-017",
+        "L1024-018",
+        "L1024-019",
+        "L1024-020",
+        "L1024-021",
+        "L1024-022",
+        "L1024-023",
+        "L1024-024",
+        "L1024-025",
+        "L1024-026",
+        "L1024-027",
+        "L1024-028",
+        "L1024-029",
+        "L1024-030",
+        "L1024-031"
+      ],
+      "4096": [
+        "L4096-016",
+        "L4096-017",
+        "L4096-018",
+        "L4096-019",
+        "L4096-020",
+        "L4096-021",
+        "L4096-022",
+        "L4096-023",
+        "L4096-024",
+        "L4096-025",
+        "L4096-026",
+        "L4096-027",
+        "L4096-028",
+        "L4096-029",
+        "L4096-030",
+        "L4096-031"
+      ],
+      "8192": [
+        "L8192-016",
+        "L8192-017",
+        "L8192-018",
+        "L8192-019",
+        "L8192-020",
+        "L8192-021",
+        "L8192-022",
+        "L8192-023",
+        "L8192-024",
+        "L8192-025",
+        "L8192-026",
+        "L8192-027",
+        "L8192-028",
+        "L8192-029",
+        "L8192-030",
+        "L8192-031"
+      ]
+    },
+    "warmup_requests": 1,
+    "warmup_wave_per_cell": true,
+    "waves_per_cell": 3,
+    "workload_id": "bf7637ea58bfb5da"
+  },
+  "config_hash": "a80c526b54208e45",
+  "counts": {
+    "errors": 0,
+    "ok": 373,
+    "requests": 373,
+    "usable": 279,
+    "warmup": 94
+  },
+  "engine_reported_startup": {
+    "attention_backend": "TRITON_ATTN",
+    "available_kv_cache_gib": 8.92,
+    "consumed_weights_plus_non_torch_gib": 3.23,
+    "cuda_graph_gib": 0.41,
+    "device_total_gib": 14.56,
+    "free_memory_gib_at_startup": 14.41,
+    "kv_block_size_tokens": 64,
+    "kv_cache_blocks": 4832,
+    "kv_cache_final_gib": 8.26,
+    "kv_cache_tokens": 309248,
+    "max_concurrency_reported": 9.44,
+    "max_concurrency_tokens_per_request": 32768,
+    "model_loading_gib": 2.98,
+    "peak_activation_gib": 0.23,
+    "source": "vLLM server log (engine-reported)",
+    "vllm_version_in_log": "0.34.0"
+  },
+  "environment_json_sha256": "c2139b60d0ba2f9451be6ae05bddab2ed16498caecf1525d80c1b60e045b925d",
+  "finished_utc": "2026-11-17T07:00:35.030269+00:00",
+  "git_commit": "7906766cc1548cc87d113b1325dc787e7e00ed98",
+  "lock_mismatches": [],
+  "memory_monitoring": {
+    "baseline_window_s": 3.0000957430002018,
+    "cpu": {
+      "last_error": null,
+      "max_gap_s": 0.5064429890007887,
+      "mean_gap_s": 0.49999798617761804,
+      "n_samples": 4384,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine": {
+      "last_error": null,
+      "max_gap_s": 0.5114517969996086,
+      "mean_gap_s": 0.4999991624328085,
+      "n_samples": 4384,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine_counter_deltas_over_run": {
+      "preemptions_total": 0.0,
+      "prefix_cache_hits_total": 0.0,
+      "prefix_cache_queries_total": 0.0
+    },
+    "gpu": {
+      "last_error": null,
+      "max_gap_s": 0.5091537810003501,
+      "mean_gap_s": 0.49999809186550276,
+      "n_samples": 4384,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "gpu_idle_baseline_used_mib": {
+      "label": "measured",
+      "n_samples": 6,
+      "value": 12791.1875
+    },
+    "interval_nominal_s": 0.5
+  },
+  "package_versions": {
+    "huggingface_hub": "2.4.0",
+    "numpy": "2.1.3",
+    "tokenizers": "0.23.3",
+    "torch": "2.14.0",
+    "transformers": "5.20.2",
+    "vllm": "0.34.0"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16",
+  "run_id": "20261117T062402Z-a80c526b",
+  "server_log": "/kaggle/working/results_step8_conc/server.log",
+  "started_utc": "2026-11-17T06:24:02.836609+00:00"
+}

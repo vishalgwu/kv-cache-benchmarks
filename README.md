@@ -57,7 +57,7 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 | 5 | Build the first streamed benchmark run | Accepted (runner works end to end; first run is a pipeline check) |
 | 6 | Validate memory and timing measurements | Accepted (samplers verified on real hardware; engine cache occupancy matches the size formula) |
 | 7 | Measure the context-length sweep | In progress (full 1K-32K sweep run, 0 failures, committed; next: review the sweep, then Step 8) |
-| 8 | Add true concurrent-request experiments | In progress (wave runner and tests built; first 1K/4K/8K x 1-16 grid not yet run) |
+| 8 | Add true concurrent-request experiments | In progress (1K/4K/8K x concurrency 1-16 grid run, 0 failures, committed; 16K/32K not run) |
 | 9 | Compare real cache and offload strategies | Pending |
 | 10 | Analyze results and create evidence-backed charts | Pending |
 | 11 | Prove reproducibility and package the benchmark | Pending |
