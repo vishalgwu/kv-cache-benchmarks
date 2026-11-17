@@ -105,7 +105,36 @@ def summarize_run(records: list) -> dict:
         "decode_tokens_per_s": describe(r["decode_tokens_per_s"] for r in ok),
         "output_tokens": describe(r["output_tokens"] for r in ok),
         "aggregate": aggregate_throughput(records),
+        "by_level": summarize_by_level(records),
+        "determinism": determinism(records),
     }
+
+
+def summarize_by_level(records: list) -> dict:
+    """Per input-length statistics over usable records, with n always shown."""
+    levels = sorted({r["target_input_tokens"] for r in usable(records)
+                     if r.get("target_input_tokens") is not None})
+    out = {}
+    for lv in levels:
+        rs = [r for r in usable(records) if r["target_input_tokens"] == lv]
+        out[str(lv)] = {"n": len(rs), "prompts": len({r["prompt_id"] for r in rs}),
+                        "ttft_s": describe(r["ttft_s"] for r in rs),
+                        "decode_tokens_per_s": describe(r["decode_tokens_per_s"] for r in rs),
+                        "e2e_latency_s": describe(r["e2e_latency_s"] for r in rs),
+                        "output_tokens": describe(r["output_tokens"] for r in rs)}
+    return out
+
+
+def determinism(records: list) -> dict:
+    """Do repeats of the same prompt give identical greedy output? Compared by output hash."""
+    groups: dict = {}
+    for r in usable(records):
+        groups.setdefault(r["prompt_id"], []).append(r["output_sha256"])
+    rep = {pid: {"n": len(h), "identical": len(set(h)) == 1} for pid, h in groups.items() if len(h) >= 2}
+    return {"prompts_with_repeats": len(rep), "all_identical": all(v["identical"] for v in rep.values()),
+            "differing_prompt_ids": sorted(k for k, v in rep.items() if not v["identical"]),
+            "note": ("greedy decoding is not guaranteed bit-identical on a GPU; a difference is "
+                     "recorded, not hidden") if rep else "no prompt was repeated"}
 
 
 def validate_run_dir(run_dir: pathlib.Path) -> list:

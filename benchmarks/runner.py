@@ -156,6 +156,17 @@ def _file_sha256(path: pathlib.Path) -> Optional[str]:
         return None
 
 
+def level_order(levels: list, trials: int, order: str) -> list:
+    """Level order for each trial. ``rotate`` shifts the list by one per trial so no level
+    is always measured first or last (the allocator keeps memory between requests)."""
+    if order not in ("ascending", "rotate"):
+        raise ValueError(f"unknown order {order!r}")
+    levels = list(levels)
+    if order == "ascending" or not levels:
+        return [levels for _ in range(trials)]
+    return [levels[t % len(levels):] + levels[:t % len(levels)] for t in range(trials)]
+
+
 def load_workload(workload_dir: pathlib.Path) -> tuple:
     manifest = json.loads((workload_dir / "manifest.json").read_text())
     prompts = [json.loads(line) for line in
@@ -170,16 +181,26 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
                   clock: Callable[[], float] = time.monotonic,
                   server_log: Optional[str] = None,
                   monitor: Optional[sampling.MemoryMonitor] = None,
-                  baseline_s: float = 0.0) -> tuple:
+                  baseline_s: float = 0.0,
+                  warmup_per_level: bool = False, order: str = "ascending") -> tuple:
     if concurrency != 1:
         raise ValueError("concurrency above 1 is implemented in Step 8, not Step 5")
 
     wl_manifest, prompts = load_workload(workload_dir)
-    selected = []
-    for level in (levels or wl_manifest["levels"]):
-        selected += [p for p in prompts if p["level"] == level][:limit_per_level]
+    level_list = list(levels or wl_manifest["levels"])
+    by_level, warm_by_level = {}, {}
+    for level in level_list:
+        at_level = [p for p in prompts if p["level"] == level]
+        by_level[level] = at_level[:limit_per_level]
+        if warmup_per_level and by_level[level]:
+            if len(at_level) <= limit_per_level:
+                raise ValueError(f"level {level}: per-level warmup needs a spare prompt; "
+                                 f"generate per_level >= {limit_per_level + 1}")
+            warm_by_level[level] = at_level[limit_per_level]  # never measured
+    selected = [p for level in level_list for p in by_level[level]]
     if not selected:
         raise ValueError("no prompts selected; check --levels against the workload manifest")
+    level_list = [lv for lv in level_list if by_level[lv]]
     max_tokens = wl_manifest["output_target_tokens"]
 
     config = {
@@ -193,6 +214,9 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
         "trials": trials,
         "workload_id": wl_manifest["workload_id"],
         "selected_prompt_ids": [p["prompt_id"] for p in selected],
+        "warmup_per_level": warmup_per_level,
+        "warmup_prompt_ids": [p["prompt_id"] for p in warm_by_level.values()],
+        "level_order": order,
         "timeout_s": timeout_s,
         "stop_on_error": stop_on_error,
         "server": server_settings or "external server; settings not controlled by this run",
@@ -219,13 +243,21 @@ def run_benchmark(*, workload_dir: pathlib.Path, host: str, port: int, model: st
     manifest_path = run_dir / "run_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))  # before any request
 
+    try:  # keep the exact workload definition with the results
+        (run_dir / "workload_manifest.json").write_text(json.dumps(wl_manifest, indent=2, sort_keys=True))
+    except OSError:
+        pass
+
     if monitor is not None:
         monitor.start()
         if baseline_s > 0:
             monitor.record_baseline(baseline_s)  # idle: no request in flight yet
 
+    orders = level_order(level_list, trials, order)
     plan = ([(WARMUP_PROMPT, True, 0, WARMUP_MAX_TOKENS)] * warmup
-            + [(p, False, t, max_tokens) for t in range(trials) for p in selected])
+            + [(warm_by_level[lv], True, 0, max_tokens) for lv in level_list if lv in warm_by_level]
+            + [(p, False, t, max_tokens) for t in range(trials) for lv in orders[t]
+               for p in by_level[lv]])
     records, counts = [], {"requests": 0, "ok": 0, "errors": 0, "warmup": 0, "usable": 0}
     with open(run_dir / "requests.jsonl", "w", encoding="utf-8") as out:
         for n, (prompt, is_warmup, trial, req_max) in enumerate(plan):
@@ -324,6 +356,10 @@ def main() -> None:
     ap.add_argument("--limit-per-level", type=int, default=1)
     ap.add_argument("--trials", type=int, default=1)
     ap.add_argument("--warmup", type=int, default=1)
+    ap.add_argument("--warmup-per-level", action="store_true",
+                    help="one unmeasured full-length warmup per level (uses a spare prompt)")
+    ap.add_argument("--order", choices=["ascending", "rotate"], default="ascending",
+                    help="level order per trial; rotate shifts it by one each trial")
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--ignore-eos", action="store_true",
                     help="disable natural stopping; recorded in the config and every record")
@@ -348,7 +384,8 @@ def main() -> None:
                   revision=revision, levels=levels, limit_per_level=args.limit_per_level,
                   trials=args.trials, warmup=args.warmup, timeout_s=args.timeout,
                   ignore_eos=args.ignore_eos, out_dir=args.out_dir,
-                  stop_on_error=args.stop_on_error, concurrency=args.concurrency)
+                  stop_on_error=args.stop_on_error, concurrency=args.concurrency,
+                  warmup_per_level=args.warmup_per_level, order=args.order)
 
     if args.launch_server:
         max_len = args.max_model_len or (max(levels) + wl_manifest["output_target_tokens"] + 64)
