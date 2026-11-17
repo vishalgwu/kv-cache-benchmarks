@@ -1,0 +1,125 @@
+{
+  "config": {
+    "concurrency": 1,
+    "engine": "vllm-openai-chat-stream",
+    "level_order": "rotate",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "sampling": {
+      "ignore_eos": true,
+      "max_tokens": 128,
+      "temperature": 0
+    },
+    "schema": "kv-bench-run-config/1",
+    "selected_prompt_ids": [
+      "L1024-000",
+      "L1024-001",
+      "L4096-000",
+      "L4096-001",
+      "L8192-000",
+      "L8192-001"
+    ],
+    "server": {
+      "cuda_visible_devices": "0",
+      "dtype": "float16",
+      "enable_prefix_caching": false,
+      "enforce_eager": false,
+      "engine": "vllm serve",
+      "extra_args": [],
+      "generation_config": "vllm",
+      "gpu_memory_utilization": 0.85,
+      "max_model_len": 32768
+    },
+    "stop_on_error": true,
+    "timeout_s": 900.0,
+    "trials": 3,
+    "warmup_per_level": true,
+    "warmup_prompt_ids": [
+      "L1024-002",
+      "L4096-002",
+      "L8192-002"
+    ],
+    "warmup_requests": 1,
+    "workload_id": "8a515c62809ee3e0"
+  },
+  "config_hash": "acb4745b8c5ee22b",
+  "counts": {
+    "errors": 0,
+    "ok": 22,
+    "requests": 22,
+    "usable": 18,
+    "warmup": 4
+  },
+  "engine_reported_startup": {
+    "attention_backend": "TRITON_ATTN",
+    "available_kv_cache_gib": 8.92,
+    "consumed_weights_plus_non_torch_gib": 3.23,
+    "cuda_graph_gib": 0.41,
+    "device_total_gib": 14.56,
+    "free_memory_gib_at_startup": 14.41,
+    "kv_block_size_tokens": 64,
+    "kv_cache_blocks": 4832,
+    "kv_cache_tokens": 309248,
+    "max_concurrency_reported": 9.44,
+    "max_concurrency_tokens_per_request": 32768,
+    "model_loading_gib": 2.98,
+    "peak_activation_gib": 0.23,
+    "source": "vLLM server log (engine-reported)",
+    "vllm_version_in_log": "0.34.0"
+  },
+  "environment_json_sha256": "0b56c7dfd53e1950d64b084f0aa543f89b15d85e12edd69571f22a45f432a669",
+  "finished_utc": "2026-11-17T04:17:21.709795+00:00",
+  "git_commit": "2917537b2e9415ce5dd764379ac7c99a46f8202c",
+  "lock_mismatches": [],
+  "memory_monitoring": {
+    "baseline_window_s": 3.000112024000373,
+    "cpu": {
+      "last_error": null,
+      "max_gap_s": 0.2527000270001736,
+      "mean_gap_s": 0.2499864748561843,
+      "n_samples": 672,
+      "nominal_interval_s": 0.25,
+      "read_errors": 0
+    },
+    "engine": {
+      "last_error": null,
+      "max_gap_s": 0.2542457635008759,
+      "mean_gap_s": 0.24999930743368048,
+      "n_samples": 672,
+      "nominal_interval_s": 0.25,
+      "read_errors": 0
+    },
+    "engine_counter_deltas_over_run": {
+      "preemptions_total": 0.0,
+      "prefix_cache_hits_total": 0.0,
+      "prefix_cache_queries_total": 0.0
+    },
+    "gpu": {
+      "last_error": null,
+      "max_gap_s": 0.2515322284998547,
+      "mean_gap_s": 0.2500000401229511,
+      "n_samples": 672,
+      "nominal_interval_s": 0.25,
+      "read_errors": 0
+    },
+    "gpu_idle_baseline_used_mib": {
+      "label": "measured",
+      "n_samples": 13,
+      "value": 12791.1875
+    },
+    "interval_nominal_s": 0.25
+  },
+  "package_versions": {
+    "huggingface_hub": "2.4.0",
+    "numpy": "2.1.3",
+    "tokenizers": "0.23.3",
+    "torch": "2.14.0",
+    "transformers": "5.20.2",
+    "vllm": "0.34.0"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16",
+  "run_id": "20261117T041433Z-acb4745b",
+  "server_log": "/kaggle/working/results_step7_eager_off/server.log",
+  "started_utc": "2026-11-17T04:14:33.652402+00:00"
+}

@@ -329,6 +329,9 @@ def parse_vllm_startup_log(text: str) -> dict:
     return {
         "source": "vLLM server log (engine-reported)",
         "vllm_version_in_log": version.group(1) if version else None,
+        # vLLM 0.34 prints a profiling estimate ("Available KV cache memory") that is NOT the pool it
+        # finally builds; the extensible cache reports the real size here (None on older logs).
+        "kv_cache_final_gib": first(r"Extended KV cache to [\d,]+ blocks \(([\d.]+) GiB\)"),
         "kv_cache_blocks": n_blocks,
         "kv_block_size_tokens": block_size,
         "model_loading_gib": first(r"Model loading took ([\d.]+) GiB"),

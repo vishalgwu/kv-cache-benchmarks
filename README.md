@@ -56,7 +56,7 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 | 4 | Create reproducible token workloads | In progress (generator verified with the real tokenizer; final sweep manifest pending) |
 | 5 | Build the first streamed benchmark run | Accepted (runner works end to end; first run is a pipeline check) |
 | 6 | Validate memory and timing measurements | Accepted (samplers verified on real hardware; engine cache occupancy matches the size formula) |
-| 7 | Measure the context-length sweep | In progress (pilot at 1K/4K/8K done on one setting; engine pin and full sweep next) |
+| 7 | Measure the context-length sweep | In progress (pilot at 1K/4K/8K done for eager on and off, plus a repeat; full 1K-32K sweep next) |
 | 8 | Add true concurrent-request experiments | Pending |
 | 9 | Compare real cache and offload strategies | Pending |
 | 10 | Analyze results and create evidence-backed charts | Pending |
