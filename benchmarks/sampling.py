@@ -43,6 +43,10 @@ ENGINE_METRICS = {
     "requests_running": (("vllm:num_requests_running",), "sum"),
     "requests_waiting": (("vllm:num_requests_waiting",), "sum"),
     "preemptions_total": (("vllm:num_preemptions_total", "vllm:num_preemptions"), "sum"),
+    # Counters that prove prefix reuse did (or did not) happen; with prefix caching off
+    # they should not grow.
+    "prefix_cache_hits_total": (("vllm:prefix_cache_hits_total", "vllm:prefix_cache_hits"), "sum"),
+    "prefix_cache_queries_total": (("vllm:prefix_cache_queries_total", "vllm:prefix_cache_queries"), "sum"),
 }
 
 
@@ -100,6 +104,18 @@ def window_stat(samples: list, t0: float, t1: float, key: str, fn: Callable) -> 
     """(value, n) over non-None ``key`` values inside [t0, t1]; value is None when n == 0."""
     vals = [s[key] for s in in_window(samples, t0, t1) if s.get(key) is not None]
     return (fn(vals) if vals else None), len(vals)
+
+
+def counter_delta(samples: list, key: str, t0: float, t1: float) -> Optional[float]:
+    """Growth of a cumulative counter over [t0, t1]: last in-window value minus the last
+    value before the window (or the first in-window value if none). None without data.
+    Counters can update after a request ends, so a window may under-report by one request."""
+    in_win = [s for s in samples if t0 <= s["t_s"] <= t1 and s.get(key) is not None]
+    if not in_win:
+        return None
+    before = [s for s in samples if s["t_s"] < t0 and s.get(key) is not None]
+    ref = before[-1][key] if before else in_win[0][key]
+    return in_win[-1][key] - ref
 
 
 def interval_stats(samples: list, nominal_s: float) -> dict:
@@ -235,6 +251,35 @@ def _proc_tree_rss_mib(pid: int, proc_root: str = "/proc") -> Optional[float]:
     return total / 1024  # kB -> MiB
 
 
+def _read_int(path: str) -> Optional[int]:
+    try:
+        text = pathlib.Path(path).read_text().strip()
+    except OSError:
+        return None
+    if text in ("", "max"):
+        return None
+    try:
+        value = int(text)
+    except ValueError:
+        return None
+    return None if value >= 2**60 else value  # cgroup v1 reports ~9.2e18 for "unlimited"
+
+
+def _cgroup_mem_mib(root: str = "/sys/fs/cgroup") -> dict:
+    """Container memory limit and current use (cgroup v2, then v1). None when unreadable.
+
+    /proc/meminfo inside a container describes the whole machine, not the container's
+    limit, so it can overstate how much memory the notebook may actually use.
+    """
+    for limit_rel, current_rel in (("memory.max", "memory.current"),
+                                   ("memory/memory.limit_in_bytes", "memory/memory.usage_in_bytes")):
+        limit, current = _read_int(f"{root}/{limit_rel}"), _read_int(f"{root}/{current_rel}")
+        if limit is not None or current is not None:
+            return {"container_mem_limit_mib": None if limit is None else limit / MIB,
+                    "container_mem_current_mib": None if current is None else current / MIB}
+    return {"container_mem_limit_mib": None, "container_mem_current_mib": None}
+
+
 def _host_mem_mib(meminfo_path: str = "/proc/meminfo") -> dict:
     text = pathlib.Path(meminfo_path).read_text()
     get = lambda key: int(re.search(rf"{key}:\s+(\d+)\s*kB", text).group(1)) / 1024  # noqa: E731
@@ -259,6 +304,7 @@ def make_cpu_reader(pid: Optional[int]) -> Callable[[], dict]:
             except Exception:
                 values["server_tree_rss_mib"] = None
         values.update(_host_mem_mib())
+        values.update(_cgroup_mem_mib())
         return values
 
     return read
@@ -344,10 +390,18 @@ class MemoryMonitor:
         samples = self._samples("gpu")
         peak, n = window_stat(samples, t0, t1, "memory_used_mib", max)
         base, n_base = self.baseline_gpu_mib()
+        before = [s for s in samples if s["t_s"] <= t0 and s.get("memory_used_mib") is not None]
+        start = before[-1]["memory_used_mib"] if before else None
         common = {"unit": "MiB", "scope": "device (all processes on the GPU; not per process)",
                   "source": (samples[-1]["source"] if samples else None),
                   "baseline_used_mib": base, "baseline_n_samples": n_base,
-                  "n_samples_in_window": n, "peak_note": "sampled peak; a lower bound on the true peak"}
+                  "used_mib_at_window_start": start,
+                  "peak_minus_window_start_mib": (peak - start) if (peak is not None and start is not None)
+                  else None,
+                  "n_samples_in_window": n, "peak_note": "sampled peak; a lower bound on the true peak",
+                  "retention_note": "the allocator keeps memory after a request ends, so a window's peak "
+                                    "includes growth from earlier requests; peak_minus_window_start_mib is "
+                                    "the growth during this request"}
         if peak is None:
             return {**common, "label": "unavailable", "peak_used_mib_in_window": None,
                     "reason": "no GPU sample fell inside the request window"}
@@ -365,30 +419,33 @@ class MemoryMonitor:
         if not in_win:
             return {**sec, "label": "unavailable", "kv_cache_usage_peak": None,
                     "requests_running_peak": None, "requests_waiting_peak": None,
-                    "preemptions_in_window": None,
+                    "preemptions_in_window": None, "prefix_cache_hits_in_window": None,
+                    "prefix_cache_queries_in_window": None,
                     "reason": "no engine sample fell inside the request window"}
         peak = lambda key: window_stat(samples, t0, t1, key, max)[0]  # noqa: E731
-        before = [s for s in samples if s["t_s"] < t0 and s.get("preemptions_total") is not None]
-        in_pre = [s for s in in_win if s.get("preemptions_total") is not None]
-        pre = None
-        if in_pre:
-            ref = before[-1]["preemptions_total"] if before else in_pre[0]["preemptions_total"]
-            pre = in_pre[-1]["preemptions_total"] - ref
         have_any = any(peak(k) is not None for k in ("kv_cache_usage", "requests_running", "requests_waiting"))
         return {**sec, "label": "measured" if have_any else "unavailable",
                 "kv_cache_usage_peak": peak("kv_cache_usage"),
                 "requests_running_peak": peak("requests_running"),
                 "requests_waiting_peak": peak("requests_waiting"),
-                "preemptions_in_window": pre,
+                "preemptions_in_window": counter_delta(samples, "preemptions_total", t0, t1),
+                "prefix_cache_hits_in_window": counter_delta(samples, "prefix_cache_hits_total", t0, t1),
+                "prefix_cache_queries_in_window": counter_delta(samples, "prefix_cache_queries_total", t0, t1),
+                "counter_note": "counters may update just after a request ends, so a window can under-report "
+                                "by one request; the run-level deltas in the manifest are the reliable check",
                 "reason": None if have_any else "engine exposes none of the expected metric names"}
 
     def _cpu_section(self, t0: float, t1: float) -> dict:
         samples = self._samples("cpu")
         rss, n = window_stat(samples, t0, t1, "server_tree_rss_mib", max)
         avail, n_avail = window_stat(samples, t0, t1, "host_mem_available_mib", min)
+        cont_peak, _ = window_stat(samples, t0, t1, "container_mem_current_mib", max)
+        cont_limit = next((s["container_mem_limit_mib"] for s in reversed(samples)
+                           if s.get("container_mem_limit_mib") is not None), None)
         sec = {"unit": "MiB", "scope": (samples[-1]["scope"] if samples else None),
                "source": (samples[-1]["source"] if samples else None),
-               "n_samples_in_window": max(n, n_avail)}
+               "n_samples_in_window": max(n, n_avail),
+               "container_mem_current_peak_mib": cont_peak, "container_mem_limit_mib": cont_limit}
         if rss is None and avail is None:
             return {**sec, "label": "unavailable", "server_tree_rss_peak_mib": None,
                     "host_mem_available_min_mib": None,
@@ -405,6 +462,12 @@ class MemoryMonitor:
         base, n_base = self.baseline_gpu_mib()
         out["gpu_idle_baseline_used_mib"] = {"value": base, "n_samples": n_base,
                                              "label": "measured" if base is not None else "unavailable"}
+        eng = self._samples("engine")
+        deltas = {}
+        for key in ("preemptions_total", "prefix_cache_hits_total", "prefix_cache_queries_total"):
+            vals = [s[key] for s in eng if s.get(key) is not None]
+            deltas[key] = (vals[-1] - vals[0]) if len(vals) >= 2 else None
+        out["engine_counter_deltas_over_run"] = deltas
         return out
 
     def write(self, run_dir: pathlib.Path) -> None:

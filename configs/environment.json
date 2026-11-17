@@ -102,6 +102,29 @@
     "vllm_available_kv_cache_gib": 8.68,
     "reading": "The analytical estimate reproduces the engine-reported cache capacity to within rounding for this configuration. This is one data point and supports H4; it does not prove it generally."
   },
+  "step6_validation_run": {
+    "run_id": "20261116T223433Z-53df2b80",
+    "config_hash": "53df2b8037a89991",
+    "purpose": "Validate the GPU, engine /metrics, and CPU samplers on real hardware. Not a baseline.",
+    "launch_flag_confirmed": "--generation-config vllm was accepted (non-default args in server.log show generation_config 'vllm') and the 'overridden by the model's generation_config.json' warning is gone.",
+    "engine_metric_names_confirmed": ["vllm:kv_cache_usage_perc", "vllm:num_requests_running", "vllm:num_requests_waiting", "vllm:num_preemptions_total", "vllm:prefix_cache_hits_total", "vllm:prefix_cache_queries_total"],
+    "kv_cache_usage_scale": "fraction of the pool (0 to 1)",
+    "gpu_sampler": "NVML, 113 samples at a 0.25 s interval (max gap 0.2515 s), 0 read errors",
+    "device_memory": {
+      "idle_baseline_mib": 13043.1875,
+      "growth_at_first_1024_token_request_mib": 54,
+      "growth_at_first_4096_token_request_mib": 106,
+      "note": "Device memory is nearly flat and retained between requests. It does not track KV-cache occupancy (31.5 MiB to 115.5 MiB of cache in use vs a roughly 9 GiB pool)."
+    },
+    "engine_cache_usage_check": "usage = ceil((prompt + output - 1) / 16) / (total_blocks - 1) reproduced all four measured requests to six digits (inferred: 16-token blocks, one reserved block, last token not cached)",
+    "observed_not_conclusions": {
+      "n": "2 requests per context level, 1 trial",
+      "first_request_cold_start": "the 37-token warmup took 2.83 s to its first token while the engine showed 0 running requests and the GPU was about idle; consistent with a one-off CPU-side first-use cost, cause not determined",
+      "prefill": "TTFT 0.30-0.38 s at 1024 tokens vs 3.07-3.13 s at 4096 tokens (about 3000 vs 1320 prompt tokens/s); consistent with TTFT growing faster than input length (H1), to be tested with more trials and levels",
+      "decode": "about 32 tok/s at both lengths with the GPU about 49-61% busy in eager mode, which suggests decode is not GPU-bound; to be tested by an eager vs CUDA-graph comparison",
+      "ram_view": "/proc/meminfo showed 27.4 GiB available (31.3 GiB total) while vLLM's startup log said 3.85 GiB available RAM"
+    }
+  },
   "step5_run_caveats": {
     "sampling_defaults": "The server log shows vLLM applied the model's generation_config.json defaults (repetition_penalty 1.1, top_k 20, top_p 0.8; temperature 0.7 was overridden by the request's temperature 0). Run 20261116T210839Z-d6a00143 therefore ran with repetition_penalty 1.1 and is a pipeline-verification run, not a baseline. Fixed in code: the launcher now passes --generation-config vllm (the flag the server's own log message suggested; confirm it is accepted on the next launch).",
     "host_resources_seen_in_log": "vLLM reported Available RAM 6.18 GiB and reduced Torch threads from 2 to 1. Host RAM bounds any CPU-offload experiment (Step 9), and a client load generator shares these few CPU cores with the server (Step 8).",
@@ -114,8 +137,11 @@
     "metrics_endpoint": "The server's route table lists /metrics, /health and /load, so engine cache usage and running/waiting counts should be readable in Step 6."
   },
   "open_items": [
-    "Confirm vllm serve accepts --generation-config vllm (suggested by the server's own log message)",
-    "Read /metrics for cache usage and running/waiting requests in Step 6",
+    "A/B test enforce_eager true vs false on the T4 (decode used about 50% GPU in eager mode) and fix the setting for the sweep",
+    "Decide ignore_eos for the sweep (1 of 4 measured requests stopped early at 113 of 128 tokens)",
+    "Read the cgroup memory limit on the next run to explain why vLLM saw 3.85 GiB available RAM while /proc/meminfo showed 27 GiB",
+    "Confirm the prefix-cache counters stay flat over a run (run-level deltas in the manifest)",
+    "Add a same-prompt-twice determinism check (greedy decoding, one server)",
     "Launch the server ONCE with a fixed max_model_len (32768) for the whole sweep so cache capacity is identical across cells",
     "Add a warmup request at each context length (a 37-token warmup does not warm the shapes of a 1K-32K prefill)",
     "Decide benchmark-time vLLM settings: max_model_len (32768 for the long-context cells), prefix caching off, enforce_eager or not",

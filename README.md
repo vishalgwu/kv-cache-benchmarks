@@ -55,7 +55,7 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 | 3 | Understand and estimate KV-cache growth | Accepted (28 KiB/token estimate matches vLLM's reported cache capacity) |
 | 4 | Create reproducible token workloads | In progress (generator verified with the real tokenizer; final sweep manifest pending) |
 | 5 | Build the first streamed benchmark run | Accepted (runner works end to end; first run is a pipeline check) |
-| 6 | Validate memory and timing measurements | Pending |
+| 6 | Validate memory and timing measurements | Accepted (samplers verified on real hardware; engine cache occupancy matches the size formula) |
 | 7 | Measure the context-length sweep | Pending |
 | 8 | Add true concurrent-request experiments | Pending |
 | 9 | Compare real cache and offload strategies | Pending |
@@ -65,11 +65,14 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 
 **Milestone gates:** A Foundation (1-4) · B First valid benchmark (5-6) · C Experimental evidence (7-9) · D Finished study (10-12).
 
-### Next: Step 6, validate memory and timing measurements
-- Write the measurement contract (units, scope, source, measured/estimated label for every value).
-- Add a GPU memory sampler (idle baseline, sampled peak) and read the vLLM server's `/metrics` endpoint for cache usage and running/waiting requests.
-- Add tests for empty streams, timeouts, zero- and one-token output, and aggregation.
-- Done when metrics can be independently recomputed or their limits are explicit.
+### Next: Step 7, measure the context-length sweep
+Decisions the first real runs call for, to settle before the sweep:
+- **Server settings:** launch once with `max_model_len` 32768 and keep it fixed (the cache pool size depends on it). Compare `enforce_eager` on and off first, because decode used only about half the GPU in eager mode.
+- **Output length:** decide whether to force 128 output tokens (`--ignore-eos`); 1 of 4 early requests stopped at 113.
+- **Warmup:** one warmup request at each context length, not a short prompt.
+- **Order and repeats:** at least three trials per level, order rotated or randomized, plus a same-prompt-twice determinism check.
+- **Device memory:** treat per-request peaks as order-dependent (the allocator retains memory); restart the server per cell if a clean per-cell value is needed.
+- Done when each planned context level has repeated measured results or an explicit failure or skip.
 
 ## Concepts covered
 

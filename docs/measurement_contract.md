@@ -55,12 +55,15 @@ Sampled on background threads in the runner process, on the same monotonic clock
 | `gpu.memory_used_mib` | MiB | **whole device** (all processes on the GPU), not per process | NVML if available, else `nvidia-smi` | measured |
 | `gpu.baseline_used_mib` | MiB | same | median of samples in an idle window before the first request | measured |
 | `gpu.peak_used_mib_in_window` | MiB | same | maximum sample inside the request window | measured, **sampled peak** |
-| `engine.kv_cache_usage_peak` | raw engine value | the engine's KV-cache pool | vLLM `/metrics` | measured; scale (fraction or percent) is confirmed from the HELP text saved in `engine_metrics_catalog.tsv` |
+| `gpu.used_mib_at_window_start`, `gpu.peak_minus_window_start_mib` | MiB | same | last sample at or before the request start; the window peak minus that value (growth during this request) | measured |
+| `engine.kv_cache_usage_peak` | fraction of the cache pool (0 to 1; "1 means 100 percent" in the engine's HELP text, confirmed on vLLM 0.33.0) | the engine's KV-cache pool | vLLM `/metrics` `vllm:kv_cache_usage_perc` | measured; sampled peak |
 | `engine.requests_running_peak`, `requests_waiting_peak` | requests | the engine scheduler | vLLM `/metrics` | measured |
 | `engine.preemptions_in_window` | count | the engine | vLLM `/metrics` counter delta | measured |
 | `engine_reported_startup.*` | GiB, tokens | the engine at startup | vLLM server log | engine-reported (parsed text) |
 | `cpu.server_tree_rss_peak_mib` | MiB | RSS summed over the server process tree | psutil or `/proc` | measured; may double count shared pages |
-| `cpu.host_mem_available_min_mib` | MiB | whole machine | `/proc/meminfo` MemAvailable | measured |
+| `cpu.host_mem_available_min_mib` | MiB | whole machine (inside a container this is the machine, not the container's limit) | `/proc/meminfo` MemAvailable | measured |
+| `cpu.container_mem_limit_mib`, `cpu.container_mem_current_peak_mib` | MiB | the container's cgroup | `/sys/fs/cgroup` (v2, then v1) | measured; null when unreadable or unlimited |
+| `engine.prefix_cache_hits_in_window`, `engine.prefix_cache_queries_in_window` | tokens | the engine | vLLM counters, delta over the window | measured; the run-level delta in the manifest is the reliable check that nothing was reused |
 | KV-cache size from the formula | bytes | one model configuration | `benchmarks/cache_estimator.py` | **estimated** |
 
 ### Limits that every reader must respect
@@ -73,9 +76,16 @@ Sampled on background threads in the runner process, on the same monotonic clock
 6. **Sampling has a cost.** Reading `/metrics` and NVML adds small load to the server. The sampler's own read errors are counted in the run manifest.
 7. **Idle baseline is taken after the server has started and before the first request.** It includes the preallocated cache pool, so a request's peak minus the baseline is the extra memory used above the pool, mainly activations.
 
+8. **Device memory is a retained high-water mark, not a per-request value.** The allocator keeps memory after a request finishes. In the first real run (2026-11-16), device memory rose 54 MiB at the first 1024-token request and another 106 MiB at the first 4096-token request, then stayed there; repeat requests of the same size showed zero growth and the same "peak". A request's `peak_used_mib_in_window` therefore includes growth from earlier requests. Use `peak_minus_window_start_mib` for growth during one request, and treat peaks as order-dependent. For a clean per-cell figure, restart the server for each cell.
+9. **`/proc/meminfo` inside a container reports the machine, not the container.** On Kaggle it showed about 27 GiB available while vLLM's own startup log said 3.85 GiB (and 6.18 GiB in an earlier run). The cgroup fields above are the container's view; CPU-offload headroom must be judged from those, not from `host_mem_available_min_mib`.
+10. **The engine's occupancy reproduces the size formula, with these inferred details.** Reported usage equals `ceil((prompt + output - 1) / 16) / (total_blocks - 1)`: 16-token blocks, one block reserved by the engine, and the last generated token not yet cached. This held to six digits for all four measured requests in the first real run. It is inferred from the data, not read from vLLM's documentation.
+11. **Counters can lag.** Engine counters (preemptions, prefix-cache hits) may update just after a request ends, so one window can under-report by a request. Use the run-level deltas in `run_manifest.json` (`memory_monitoring.engine_counter_deltas_over_run`).
+
 ### Engine metric names
 
 vLLM metric names change between versions. The runner records the engine's actual catalog (name, type, HELP) in `engine_metrics_catalog.tsv` for each run and looks for the canonical metrics under known candidate names. A metric the engine does not expose is `unavailable`, not zero.
+
+Confirmed on vLLM 0.33.0 (2026-11-16): `vllm:kv_cache_usage_perc`, `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:num_preemptions_total`, `vllm:prefix_cache_hits_total`, and `vllm:prefix_cache_queries_total` all exist. The catalog also exposes server-side phase timings (`request_queue_time`, `request_prefill_time`, `request_decode_time`, `time_to_first_token` histograms), which could split client TTFT into queueing and prefill, and `prompt_tokens_cached_by_source`, whose help text names a host (DRAM) tier. Neither is used yet.
 
 ## 5. Record and schema rules
 

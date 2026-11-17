@@ -81,7 +81,15 @@ def fake_server(scenario, status=200):
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    class QuietServer(ThreadingHTTPServer):
+        def handle_error(self, request, client_address):
+            # A client that times out or disconnects is part of the scenarios under test;
+            # do not print Python's traceback banner for it. Other errors still print.
+            if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError)):
+                return
+            super().handle_error(request, client_address)
+
+    server = QuietServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
