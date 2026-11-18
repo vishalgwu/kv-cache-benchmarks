@@ -1,0 +1,130 @@
+{
+  "base_seed": 1234,
+  "length_tolerance_tokens": 4,
+  "levels": [
+    32000
+  ],
+  "max_context": 32768,
+  "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+  "output_policy": "fixed max_tokens target; natural stopping is not disabled here, so actual output length and stop reason must be recorded per request",
+  "output_target_tokens": 128,
+  "per_level": 11,
+  "prefix_policy": "unique per-prompt nonce header; no shared prefix between prompts",
+  "requests": [
+    {
+      "actual_input_tokens": 32000,
+      "index": 0,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-000",
+      "prompt_sha256": "2d4e4e0be590b02d56ec14ee4b8d84ab35bfcaf5c6f3e838fa0904546c935892",
+      "seed": 13547342223038253237,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 32000,
+      "index": 1,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-001",
+      "prompt_sha256": "de38f70d9b775c1b980e5164911a0cda64b7e2060d3880cbed63f64bf8e604a7",
+      "seed": 4798124787694460519,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 32000,
+      "index": 2,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-002",
+      "prompt_sha256": "c2c51d040abf312f124ef1c5350b01122d56e90052ac187e4713cfbf9c15e12d",
+      "seed": 13492075545098486761,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 3,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-003",
+      "prompt_sha256": "06f4fedf761d5802d53403d018448676e7a24eb1616ffae9b9d38b7f2351e06c",
+      "seed": 9831372986153455528,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 32000,
+      "index": 4,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-004",
+      "prompt_sha256": "1f5f9a96087580d2dfd94aa3f3ebbad484c827a189357e2ded518f81bbca30a3",
+      "seed": 7548432185902857021,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 5,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-005",
+      "prompt_sha256": "f952088df4464c735d88f7a23df6af3a1ea3623ca6c6808c56ea1293baf12ff0",
+      "seed": 10457787212126216231,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 6,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-006",
+      "prompt_sha256": "ca697d21decbc03ea7e1c8298f36aebc058843fac19c3f41e08234e092a5837d",
+      "seed": 849912556229134802,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 7,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-007",
+      "prompt_sha256": "af0204c854fcfecf23de02b8d6fa621c6474777e5e5a24e2031e3bfa2c1e4538",
+      "seed": 18032211271577769754,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 32000,
+      "index": 8,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-008",
+      "prompt_sha256": "81bcc033cf3c1994ce9d31ec56ec5cfef2583206c639e8ed8f43b5eedf7defc3",
+      "seed": 9544721773987969926,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 9,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-009",
+      "prompt_sha256": "a78c9ac2ebd0cc8d5ffc4638c7dd716b1391f5b7a6343b06bb4d76c754bcdb6e",
+      "seed": 2962829783439011867,
+      "target_input_tokens": 32000
+    },
+    {
+      "actual_input_tokens": 31999,
+      "index": 10,
+      "level": 32000,
+      "output_target_tokens": 128,
+      "prompt_id": "L32000-010",
+      "prompt_sha256": "392c275407993e8d0a9516ef97117e11092ff1bf10f842606ab9454276ff8b6b",
+      "seed": 6609075698947561587,
+      "target_input_tokens": 32000
+    }
+  ],
+  "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "schema": "kv-bench-workload/1",
+  "token_count_basis": "chat template applied, add_generation_prompt=True, special tokens included",
+  "truncation_policy": "none: prompts are constructed to length, never truncated",
+  "workload_id": "bbdf9d8f34dccfbd"
+}
