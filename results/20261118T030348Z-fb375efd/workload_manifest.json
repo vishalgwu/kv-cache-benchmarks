@@ -1,0 +1,190 @@
+{
+  "base_seed": 1234,
+  "length_tolerance_tokens": 4,
+  "levels": [
+    16384
+  ],
+  "max_context": 32768,
+  "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+  "output_policy": "fixed max_tokens target; natural stopping is not disabled here, so actual output length and stop reason must be recorded per request",
+  "output_target_tokens": 128,
+  "per_level": 17,
+  "prefix_policy": "unique per-prompt nonce header; no shared prefix between prompts",
+  "requests": [
+    {
+      "actual_input_tokens": 16384,
+      "index": 0,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-000",
+      "prompt_sha256": "afecf15724e942a2117fc6d4d2a765644c6c330d73d8485aed3a3db2db682716",
+      "seed": 4801030774354033661,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16383,
+      "index": 1,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-001",
+      "prompt_sha256": "0eea3a44d5c87518e549afe0fc762f3f507fa50c55973890804ca84a2e7a55f7",
+      "seed": 4069282586016314437,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 2,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-002",
+      "prompt_sha256": "42ff640d03abced306cadec9137b1a98bd844ee12407a2de362275abfbf61573",
+      "seed": 3435517587322367779,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 3,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-003",
+      "prompt_sha256": "c4d1f8c2747c2594673902caf0ad1b2e8adfa0e6c97376ea1018d2d835e1c5fe",
+      "seed": 12850178816799810753,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 4,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-004",
+      "prompt_sha256": "5dfeb39262535a761c8d7a4ccae6223719e76a490b127ae4eaf806a0c52b25bb",
+      "seed": 7361830875358652244,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 5,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-005",
+      "prompt_sha256": "509f5c6a83784bff300ed5fb958cfadb4f318d6f29317099d83af86971202e2e",
+      "seed": 11446499230618701772,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 6,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-006",
+      "prompt_sha256": "a45b4ed00e46160432e25fb7bef7e8346a6096742c3f66172e2ef953c98b72c8",
+      "seed": 7491802200581558635,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 7,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-007",
+      "prompt_sha256": "7d6596fbdc32ddd730d971b0d44b4b8a02ae558990a781a6cef0fa5ea6686532",
+      "seed": 197320439201133365,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 8,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-008",
+      "prompt_sha256": "48a2773cd39fccde165c8852662c7cb56f51d2f5cd3707d95cdbb17d82e41c38",
+      "seed": 13704908125956718350,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16383,
+      "index": 9,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-009",
+      "prompt_sha256": "a34821e341016af1f6c48d97694c054e20c523f1f756f96a8e72a783a3cd206e",
+      "seed": 2436166083750861762,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 10,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-010",
+      "prompt_sha256": "f5780202b00a03aa5dc95e1fa86d3fd04e65638fd2ef4e6485e4bc7ce393a2f1",
+      "seed": 18374278615858779355,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 11,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-011",
+      "prompt_sha256": "4a20bbafe7c1862dc4d9e51d2686c696a8fe7132c289f66ed586f0c713538869",
+      "seed": 1669210544791552916,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 12,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-012",
+      "prompt_sha256": "8f06ca3130b07d6b1a03e89f6343f869183140848f012554f43a4c77b3c6cb75",
+      "seed": 251070673872295300,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 13,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-013",
+      "prompt_sha256": "cf1f131651183d3d7892064a8b7d06ccabbc945d6e438a78d9cc7602b078ba4b",
+      "seed": 18412269747337448872,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 14,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-014",
+      "prompt_sha256": "6683cd7f882543f9a91fb4dd3436c3a1d8eac5e1e30ef234e77ceaa82889b62d",
+      "seed": 2776344372905794254,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 15,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-015",
+      "prompt_sha256": "f3be6bc9191c888b6565b11504c02355f6ecb4bc41edcd119834050b9d3d4d22",
+      "seed": 2114938423976107461,
+      "target_input_tokens": 16384
+    },
+    {
+      "actual_input_tokens": 16384,
+      "index": 16,
+      "level": 16384,
+      "output_target_tokens": 128,
+      "prompt_id": "L16384-016",
+      "prompt_sha256": "2f729ce9f44b1a53651d672002be92619ac3b482ce803c455e4033c233d60fc2",
+      "seed": 1855015127388409004,
+      "target_input_tokens": 16384
+    }
+  ],
+  "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "schema": "kv-bench-workload/1",
+  "token_count_basis": "chat template applied, add_generation_prompt=True, special tokens included",
+  "truncation_policy": "none: prompts are constructed to length, never truncated",
+  "workload_id": "fda9d88cbf863598"
+}

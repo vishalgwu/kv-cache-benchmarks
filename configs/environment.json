@@ -188,7 +188,7 @@
     "Explain the 20 percent 8K decode slowdown with graphs and the order-independent TTFT stability seen in the sweep",
     "Record the engine scheduler limits (max_num_batched_tokens, max_num_seqs) in the run manifest; they are not in the vLLM 0.34.0 server log",
     "Why greedy outputs diverge at 1K under batching at one text position (character 222) while longer prompts mostly do not",
-    "Step 8 extension: 16K and 32K concurrency (32K x 10 or more exceeds the 309,248-token pool; engine max concurrency 9.44)"
+    "Step 8 extension: 32K concurrency (N=8 fills 83 percent of the pool, N=10 exceeds it)"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",
@@ -291,5 +291,50 @@
     "batch_invariance": "N=1 and N=2: identical output in every wave. N=4/8/16: 2/4, 4/8, 5/16 prompts at 1K, 0/4, 1/8, 2/16 at 4K, 0/4, 0/8, 2/16 at 8K gave more than one distinct output across the 3 waves. The 1K prompt L1024-000 first differs from its N=1 output at character 222 in every differing case.",
     "gpu_device_memory": "12,953 MiB peak in every cell at and after the first 4-request 1K warmup: the preallocated pool means device memory does not show concurrency demand; engine cache usage does",
     "caveats": "one device, one model, one engine version; 3 waves per cell; sampled engine gauges are lower bounds and the running and waiting peaks are not simultaneous; the scheduler limits (max_num_batched_tokens, max_num_seqs) are not recorded in the server log and are unknown; 16K and 32K concurrency not measured; per-stream decode rate is confounded with other requests' prefill chunks"
+  },
+  "step8_16k": {
+    "run_id": "20261118T030348Z-fb375efd",
+    "also_run_console_only": "20261118T021243Z-fb375efd (same config hash, same session; files not saved; agrees within 0.3 percent)",
+    "session_note": "new Kaggle session on 2026-11-18: Tesla T4 15,360 MiB, driver 580.178.04, vLLM 0.34.0 reinstalled to the pin, same KV pool (4832 blocks, 309,248 tokens). Single-request 16K TTFT 44.68 s and decode 32.9 tok/s versus 45.0 s and 32.5 tok/s in the 2026-11-17 sweep (within 1 percent).",
+    "config": "16,384 x N 1/2/4/8/16, 1 unmeasured warmup wave at N=1, 2 measured waves per cell, enforce_eager OFF, max_model_len 32768, timeout 3600 s",
+    "ttft_last_median_s": {
+      "1": 44.68,
+      "2": 89.08,
+      "4": 178.47,
+      "8": 358.06,
+      "16": 721.61
+    },
+    "agg_output_tok_s_median": {
+      "1": 2.6,
+      "2": 2.7,
+      "4": 2.7,
+      "8": 2.8,
+      "16": 2.8
+    },
+    "decode_tok_s_earliest_first_token_request": {
+      "1": 32.9,
+      "2": 2.5,
+      "4": 0.9,
+      "8": 0.4,
+      "16": 0.19
+    },
+    "decode_tok_s_latest_first_token_request": {
+      "1": 32.9,
+      "2": 20.8,
+      "4": 15.5,
+      "8": 11.0,
+      "16": 8.7
+    },
+    "kv_usage_peak": {
+      "1": 0.053,
+      "2": 0.107,
+      "4": 0.214,
+      "8": 0.427,
+      "16": 0.853
+    },
+    "kv_note": "at N=16 the peak (0.8528) is below the sum of final blocks (0.8545) because early requests are still decoding when the last one starts, but the last ones have not reached their final block; it is above the sum of prompt blocks (0.8479)",
+    "profiling_estimate_differs_between_runs_but_final_pool_does_not": "first run of the cell: 'Available KV cache memory' 8.73 GiB and peak activation 0.41 GiB; second run: 8.92 GiB and 0.23 GiB; both ended with the same 8.26 GiB, 309,248-token pool",
+    "batch_invariance": "prompts whose outputs differed between waves of the same N: L16384-004 (N=8 and 16), L16384-006 (N=8) in the committed run; L16384-002, -004, -009 in the console-only first run. The set of affected prompts is not reproducible between runs.",
+    "caveats": "one device, one engine version; 2 waves per cell; the per-stream decode rate is dominated by other requests' prefill steps; scheduler limits not recorded; the sampled cache peak is a lower bound"
   }
 }

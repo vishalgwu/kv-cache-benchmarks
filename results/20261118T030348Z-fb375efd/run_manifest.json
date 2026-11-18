@@ -1,0 +1,149 @@
+{
+  "config": {
+    "cell_order": "rotate",
+    "concurrency_levels": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "engine": "vllm-openai-chat-stream",
+    "levels": [
+      16384
+    ],
+    "load_policy": "closed waves: N distinct prompts of one length are submitted together; the next wave starts after all N have finished",
+    "measured_prompt_ids": {
+      "16384": [
+        "L16384-000",
+        "L16384-001",
+        "L16384-002",
+        "L16384-003",
+        "L16384-004",
+        "L16384-005",
+        "L16384-006",
+        "L16384-007",
+        "L16384-008",
+        "L16384-009",
+        "L16384-010",
+        "L16384-011",
+        "L16384-012",
+        "L16384-013",
+        "L16384-014",
+        "L16384-015"
+      ]
+    },
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "sampling": {
+      "ignore_eos": true,
+      "max_tokens": 128,
+      "temperature": 0
+    },
+    "schema": "kv-bench-run-config/2",
+    "server": {
+      "cuda_visible_devices": "0",
+      "dtype": "float16",
+      "enable_prefix_caching": false,
+      "enforce_eager": false,
+      "engine": "vllm serve",
+      "extra_args": [],
+      "generation_config": "vllm",
+      "gpu_memory_utilization": 0.85,
+      "max_model_len": 32768
+    },
+    "stop_on_error": true,
+    "timeout_s": 3600.0,
+    "warmup_cells": "smallest",
+    "warmup_prompt_ids": {
+      "16384": [
+        "L16384-016"
+      ]
+    },
+    "warmup_requests": 1,
+    "warmup_wave_per_cell": false,
+    "waves_per_cell": 2,
+    "workload_id": "fda9d88cbf863598"
+  },
+  "config_hash": "fb375efdcda6446b",
+  "counts": {
+    "errors": 0,
+    "ok": 64,
+    "requests": 64,
+    "usable": 62,
+    "warmup": 2
+  },
+  "engine_reported_startup": {
+    "attention_backend": "TRITON_ATTN",
+    "available_kv_cache_gib": 8.92,
+    "consumed_weights_plus_non_torch_gib": 3.23,
+    "cuda_graph_gib": 0.41,
+    "device_total_gib": 14.56,
+    "free_memory_gib_at_startup": 14.41,
+    "kv_block_size_tokens": 64,
+    "kv_cache_blocks": 4832,
+    "kv_cache_final_gib": 8.26,
+    "kv_cache_tokens": 309248,
+    "max_concurrency_reported": 9.44,
+    "max_concurrency_tokens_per_request": 32768,
+    "model_loading_gib": 2.98,
+    "peak_activation_gib": 0.23,
+    "source": "vLLM server log (engine-reported)",
+    "vllm_version_in_log": "0.34.0"
+  },
+  "environment_json_sha256": "271812e558c6d63d36a9394b8f7f42035db5c1449f3ca5578f443b0a8a9c8e54",
+  "finished_utc": "2026-11-18T03:52:33.700875+00:00",
+  "git_commit": "fe1836d90de4cfbc253fe184502ecce566f25d65",
+  "lock_mismatches": [],
+  "memory_monitoring": {
+    "baseline_window_s": 3.0005663530000675,
+    "cpu": {
+      "last_error": null,
+      "max_gap_s": 0.5103797775009298,
+      "mean_gap_s": 0.4999982087399146,
+      "n_samples": 5851,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine": {
+      "last_error": null,
+      "max_gap_s": 0.5116074380002829,
+      "mean_gap_s": 0.5000002925164959,
+      "n_samples": 5851,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine_counter_deltas_over_run": {
+      "preemptions_total": 0.0,
+      "prefix_cache_hits_total": 0.0,
+      "prefix_cache_queries_total": 0.0
+    },
+    "gpu": {
+      "last_error": null,
+      "max_gap_s": 0.508471420499518,
+      "mean_gap_s": 0.49999836383341895,
+      "n_samples": 5851,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "gpu_idle_baseline_used_mib": {
+      "label": "measured",
+      "n_samples": 6,
+      "value": 12791.1875
+    },
+    "interval_nominal_s": 0.5
+  },
+  "package_versions": {
+    "huggingface_hub": "2.4.0",
+    "numpy": "2.1.3",
+    "tokenizers": "0.23.3",
+    "torch": "2.14.0",
+    "transformers": "5.20.2",
+    "vllm": "0.34.0"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16",
+  "run_id": "20261118T030348Z-fb375efd",
+  "server_log": "/kaggle/working/results_step8_16k/server.log",
+  "started_utc": "2026-11-18T03:03:48.365024+00:00"
+}
