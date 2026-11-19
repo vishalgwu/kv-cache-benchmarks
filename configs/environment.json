@@ -189,9 +189,10 @@
     "Why greedy outputs diverge at 1K under batching at one text position (character 222) while longer prompts mostly do not",
     "To price the capacity limit separately from serial prefill: a 32K run with a longer output (e.g. 512 tokens) or N above 10, so a request frees blocks later than the serial queue releases",
     "Verify the scheduler token budget (max_num_batched_tokens) directly; the decode-starvation arithmetic assumes 2,048",
-    "Step 9: build and review the working-set sweep (sessions x context, round-robin revisits) for baseline vs prefix cache vs prefix cache + native CPU offload",
     "Check /dev/shm capacity and the largest safe --kv-offloading-size inside the 30 GiB container; record container_shmem_mib (added after the probe)",
-    "Explain why the offload run's second request had a 0.058 s first token versus 0.253 s for prefix-only (single observation)"
+    "Explain why the offload run's second request had a 0.058 s first token versus 0.253 s for prefix-only (single observation)",
+    "Run the Step 9 working-set sweep (docs/kaggle_step9_ws_a.py then docs/kaggle_step9_ws_b.py) and compare revisit hits and first-token times across baseline, prefix cache and prefix cache + offload",
+    "Possible follow-up after the sweep: a shuffled-revisit run (--revisit-order shuffled) and a larger offload buffer, only if memory allows"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",

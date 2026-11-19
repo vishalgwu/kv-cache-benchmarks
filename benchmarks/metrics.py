@@ -27,7 +27,7 @@ from typing import Iterable, Optional
 from benchmarks import runner, sampling
 
 TAIL_MIN_SAMPLES = {"p95": 20, "p99": 100}
-REQUEST_SCHEMAS = {"kv-bench-request/1", "kv-bench-request/2", "kv-bench-request/3"}
+REQUEST_SCHEMAS = {"kv-bench-request/1", "kv-bench-request/2", "kv-bench-request/3", "kv-bench-request/4"}
 
 
 def load_records(path: pathlib.Path) -> list:
