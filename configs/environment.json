@@ -181,7 +181,6 @@
     "metrics_endpoint": "The server's route table lists /metrics, /health and /load, so engine cache usage and running/waiting counts should be readable in Step 6."
   },
   "open_items": [
-    "Measure container memory without page cache (memory.stat anon) before the Step 9 offload experiment",
     "Read the cgroup memory limit on the next run to explain why vLLM saw 3.85 GiB available RAM while /proc/meminfo showed 27 GiB",
     "Confirm the prefix-cache counters stay flat over a run (run-level deltas in the manifest)",
     "Why decode tok/s is faster at 1K with graphs on while the GPU clock is lowest there (clock confounder; needs clock-controlled or more samples)",
@@ -189,7 +188,9 @@
     "Record the engine scheduler limits (max_num_batched_tokens, max_num_seqs) in the run manifest; they are not in the vLLM 0.34.0 server log",
     "Why greedy outputs diverge at 1K under batching at one text position (character 222) while longer prompts mostly do not",
     "To price the capacity limit separately from serial prefill: a 32K run with a longer output (e.g. 512 tokens) or N above 10, so a request frees blocks later than the serial queue releases",
-    "Verify the scheduler token budget (max_num_batched_tokens) directly; the decode-starvation arithmetic assumes 2,048"
+    "Verify the scheduler token budget (max_num_batched_tokens) directly; the decode-starvation arithmetic assumes 2,048",
+    "Run the Step 9 capability probe (docs/kaggle_step9_probe.py) to learn which of prefix caching, fp8 KV and native CPU KV offload are active on the T4 with vLLM 0.34.0",
+    "Read container_anon_mib and container_file_mib from the probe's memory snapshots to size the CPU-offload headroom (resolves the page-cache open item)"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",
