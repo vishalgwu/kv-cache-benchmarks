@@ -192,7 +192,8 @@
     "Check /dev/shm capacity and the largest safe --kv-offloading-size inside the 30 GiB container; record container_shmem_mib (added after the probe)",
     "Explain why the offload run's second request had a 0.058 s first token versus 0.253 s for prefix-only (single observation)",
     "Run the Step 9 working-set sweep (docs/kaggle_step9_ws_a.py then docs/kaggle_step9_ws_b.py) and compare revisit hits and first-token times across baseline, prefix cache and prefix cache + offload",
-    "Possible follow-up after the sweep: a shuffled-revisit run (--revisit-order shuffled) and a larger offload buffer, only if memory allows"
+    "Possible follow-up after the sweep: a shuffled-revisit run (--revisit-order shuffled) and a larger offload buffer, only if memory allows",
+    "Optional: add S = 64 and 80 to locate the prefix-cache loss point (about 74 expected), and a shuffled-revisit run for a smoother curve"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",
@@ -419,5 +420,33 @@
       "prefix_hits": 0
     },
     "caveats": "two requests per configuration; GPU pool never full so offload activity under pressure is unproven; first-token difference between offload (0.058 s) and prefix-only (0.253 s) is one observation, unexplained; shmem not yet recorded separately"
+  },
+  "step9_ws_a": {
+    "runs": {
+      "baseline": "20261119T021951Z-3cbc939b",
+      "prefix_cache": "20261119T022723Z-402f880f"
+    },
+    "design": "S sessions x 4,096-token distinct contexts, fill then 1 revisit round, same order, concurrency 1, 16 output tokens, settle 0.5 s; sizes 48/96/144/192; prefix run 961 requests",
+    "prefix_cache_revisit_ttft_median_s": {
+      "48": 0.145,
+      "96": 3.25,
+      "144": 3.256,
+      "192": 3.251
+    },
+    "prefix_cache_revisit_cached_requests": {
+      "48": "48/48",
+      "96": "0/96",
+      "144": "0/144",
+      "192": "0/192"
+    },
+    "baseline_ttft_median_s": {
+      "fill": 3.234,
+      "revisit": 3.253
+    },
+    "hit_tokens_total": 193536,
+    "capacity_arithmetic": "about 4,109 prompt tokens + 16 output = 65 blocks per session; 4,831 usable blocks hold about 74 sessions; the cliff is bracketed between 48 and 96 sessions, not located",
+    "memory": "container file memory about 15.5 GiB and anonymous about 3.4 GiB flat across the whole run; shmem about 46 MiB in the baseline run (no offload); GPU 12,955 MiB",
+    "session_note": "/dev/shm is 14 GiB (df); before any server container memory was 16.3 GiB of 30 GiB (anon 458 MiB, file 15.4 GiB, shmem 0)",
+    "caveats": "one revisit round and one observation per cell; same-order revisits are the LRU worst case; earlier cells' blocks remain in the cache as least recently used; the cliff location is not measured"
   }
 }
