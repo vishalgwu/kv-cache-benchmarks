@@ -189,8 +189,9 @@
     "Why greedy outputs diverge at 1K under batching at one text position (character 222) while longer prompts mostly do not",
     "To price the capacity limit separately from serial prefill: a 32K run with a longer output (e.g. 512 tokens) or N above 10, so a request frees blocks later than the serial queue releases",
     "Verify the scheduler token budget (max_num_batched_tokens) directly; the decode-starvation arithmetic assumes 2,048",
-    "Run the Step 9 capability probe (docs/kaggle_step9_probe.py) to learn which of prefix caching, fp8 KV and native CPU KV offload are active on the T4 with vLLM 0.34.0",
-    "Read container_anon_mib and container_file_mib from the probe's memory snapshots to size the CPU-offload headroom (resolves the page-cache open item)"
+    "Step 9: build and review the working-set sweep (sessions x context, round-robin revisits) for baseline vs prefix cache vs prefix cache + native CPU offload",
+    "Check /dev/shm capacity and the largest safe --kv-offloading-size inside the 30 GiB container; record container_shmem_mib (added after the probe)",
+    "Explain why the offload run's second request had a 0.058 s first token versus 0.253 s for prefix-only (single observation)"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",
@@ -387,5 +388,35 @@
     "session_note": "throttle reasons: unthrottled (mask 0) in 57 percent of GPU samples, software power cap (mask 4) in 43 percent; on 2026-11-17 the power cap was active in 99.8 percent. Clock median 1,590 MHz, temperature max 79 C.",
     "prompt_token_counts": "6 of 10 distinct measured prompts re-tokenize to 31,999 tokens (target 32,000); counts are stored per record",
     "caveats": "one device, one engine version; one wave per cell; sampled engine gauges at 0.5 s; scheduler budget not recorded; N=2 and N=16 not run"
+  },
+  "step9_probe": {
+    "run_dir": "results/20261119T014800Z-step9-probe",
+    "session_note": "2026-11-19 Kaggle session: Tesla T4 15,360 MiB, driver 580.178.04, vLLM 0.34.0, container memory limit 30,720 MiB, 4 CPUs, MemTotal 32,869,292 kB; before any server: anon 457 MiB, file 15,349 MiB, memory.current 16.2 GiB",
+    "fp8_kv": "unsupported: ValueError 'FP8 KV cache is not supported by the Triton attention backend on Tesla T4 (compute capability 7.5); native FP8 (fp8e4nv) requires SM89+. Re-run with --kv-cache-dtype float16.'",
+    "prefix_cache": {
+      "second_request_hit_tokens": 8128,
+      "of": 8192,
+      "ttft_first_s": 11.444,
+      "ttft_second_s": 0.253
+    },
+    "kv_offload_native": {
+      "flags": "--enable-prefix-caching --kv-offloading-backend native --kv-offloading-size 8",
+      "connector": "OffloadingConnector / CPUOffloadingSpec",
+      "buffer": "mmap file in /dev/shm, 8.59 GB, unlinked after mapping",
+      "ttft_first_s": 11.432,
+      "ttft_second_s": 0.058,
+      "memory_vs_baseline": {
+        "server_tree_rss_mib": "+8,124",
+        "container_file_mib": "+8,102",
+        "container_anon_mib": "-28 (no change)",
+        "container_mem_current_mib": "27,823 of 30,720"
+      }
+    },
+    "baseline": {
+      "ttft_first_s": 12.333,
+      "ttft_second_s": 11.256,
+      "prefix_hits": 0
+    },
+    "caveats": "two requests per configuration; GPU pool never full so offload activity under pressure is unproven; first-token difference between offload (0.058 s) and prefix-only (0.253 s) is one observation, unexplained; shmem not yet recorded separately"
   }
 }

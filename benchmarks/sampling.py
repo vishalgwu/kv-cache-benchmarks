@@ -304,14 +304,16 @@ def _cgroup_mem_mib(root: str = "/sys/fs/cgroup") -> dict:
 
 
 def _cgroup_mem_stat_mib(root: str = "/sys/fs/cgroup") -> dict:
-    """Container anonymous memory and page cache, in MiB (cgroup v2 ``memory.stat``, then v1).
+    """Container anonymous memory, page cache and shared memory, in MiB (cgroup v2 ``memory.stat``, then v1).
 
     ``memory.current`` includes page cache (measurement contract limit 13), so it cannot show how much
-    memory the server really holds. ``anon`` is process memory (heap, pinned buffers); ``file`` is
-    page cache. CPU KV offload shows up in ``anon``, not in ``file``. None when unreadable.
+    memory the server really holds. ``anon`` is ordinary process memory; ``file`` is page cache; ``shmem``
+    is shared memory (tmpfs such as /dev/shm), which cgroup v2 counts inside ``file`` as well.
+    The Step 9 probe showed that vLLM's native CPU KV offload buffer (an mmap'd /dev/shm file) rose in
+    ``file`` and in the server's RSS but NOT in ``anon``. None when unreadable.
     """
-    for rel, anon_key, file_key in (("memory.stat", "anon", "file"),
-                                    ("memory/memory.stat", "total_rss", "total_cache")):
+    for rel, keys in (("memory.stat", ("anon", "file", "shmem")),
+                      ("memory/memory.stat", ("total_rss", "total_cache", "total_shmem"))):
         try:
             text = pathlib.Path(f"{root}/{rel}").read_text()
         except OSError:
@@ -321,10 +323,11 @@ def _cgroup_mem_stat_mib(root: str = "/sys/fs/cgroup") -> dict:
             parts = line.split()
             if len(parts) == 2 and parts[1].isdigit():
                 fields[parts[0]] = int(parts[1])
-        if anon_key in fields or file_key in fields:
-            return {"container_anon_mib": fields[anon_key] / MIB if anon_key in fields else None,
-                    "container_file_mib": fields[file_key] / MIB if file_key in fields else None}
-    return {"container_anon_mib": None, "container_file_mib": None}
+        if any(k in fields for k in keys):
+            get = lambda k: fields[k] / MIB if k in fields else None  # noqa: E731
+            return {"container_anon_mib": get(keys[0]), "container_file_mib": get(keys[1]),
+                    "container_shmem_mib": get(keys[2])}
+    return {"container_anon_mib": None, "container_file_mib": None, "container_shmem_mib": None}
 
 
 def _host_mem_mib(meminfo_path: str = "/proc/meminfo") -> dict:
@@ -507,13 +510,15 @@ class MemoryMonitor:
         cont_peak, _ = window_stat(samples, t0, t1, "container_mem_current_mib", max)
         anon_peak, _ = window_stat(samples, t0, t1, "container_anon_mib", max)
         file_peak, _ = window_stat(samples, t0, t1, "container_file_mib", max)
+        shmem_peak, _ = window_stat(samples, t0, t1, "container_shmem_mib", max)
         cont_limit = next((s["container_mem_limit_mib"] for s in reversed(samples)
                            if s.get("container_mem_limit_mib") is not None), None)
         sec = {"unit": "MiB", "scope": (samples[-1]["scope"] if samples else None),
                "source": (samples[-1]["source"] if samples else None),
                "n_samples_in_window": max(n, n_avail),
                "container_mem_current_peak_mib": cont_peak, "container_mem_limit_mib": cont_limit,
-               "container_anon_peak_mib": anon_peak, "container_file_peak_mib": file_peak}
+               "container_anon_peak_mib": anon_peak, "container_file_peak_mib": file_peak,
+               "container_shmem_peak_mib": shmem_peak}
         if rss is None and avail is None:
             return {**sec, "label": "unavailable", "server_tree_rss_peak_mib": None,
                     "host_mem_available_min_mib": None,

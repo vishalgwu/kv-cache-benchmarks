@@ -118,27 +118,32 @@ def test_evidence_lines_pick_relevant_lines_and_skip_progress_bars():
 
 
 def test_cgroup_v2_splits_anonymous_memory_from_page_cache(tmp_path):
-    (tmp_path / "memory.stat").write_text("anon 1073741824\nfile 3221225472\nkernel 0\n")
-    assert sp._cgroup_mem_stat_mib(str(tmp_path)) == {"container_anon_mib": 1024.0, "container_file_mib": 3072.0}
+    (tmp_path / "memory.stat").write_text("anon 1073741824\nfile 3221225472\nshmem 2147483648\nkernel 0\n")
+    assert sp._cgroup_mem_stat_mib(str(tmp_path)) == {"container_anon_mib": 1024.0, "container_file_mib": 3072.0,
+                                                      "container_shmem_mib": 2048.0}
 
 
 def test_cgroup_v1_stat_and_missing_files(tmp_path):
     (tmp_path / "memory").mkdir()
     (tmp_path / "memory" / "memory.stat").write_text("total_rss 2097152\ntotal_cache 4194304\n")
-    assert sp._cgroup_mem_stat_mib(str(tmp_path)) == {"container_anon_mib": 2.0, "container_file_mib": 4.0}
+    assert sp._cgroup_mem_stat_mib(str(tmp_path)) == {"container_anon_mib": 2.0, "container_file_mib": 4.0,
+                                                      "container_shmem_mib": None}
     empty = tmp_path / "none"
     empty.mkdir()
-    assert sp._cgroup_mem_stat_mib(str(empty)) == {"container_anon_mib": None, "container_file_mib": None}
+    assert sp._cgroup_mem_stat_mib(str(empty)) == {"container_anon_mib": None, "container_file_mib": None,
+                                                   "container_shmem_mib": None}
 
 
 def test_cpu_block_reports_anon_and_file_peaks_and_old_records_still_work():
     m = sp.MemoryMonitor(cpu_reader=lambda: {}, interval_s=1.0)
     row = lambda t, a, f: {"t_s": t, "server_tree_rss_mib": 900.0, "host_mem_available_mib": 5000.0,  # noqa: E731
                            "container_mem_current_mib": 3000.0, "container_mem_limit_mib": 4096.0,
-                           "container_anon_mib": a, "container_file_mib": f, "scope": "s", "source": "x"}
+                           "container_anon_mib": a, "container_file_mib": f, "container_shmem_mib": f / 2,
+                           "scope": "s", "source": "x"}
     m.samplers["cpu"].samples += [row(1.0, 800.0, 2000.0), row(2.0, 1200.0, 1800.0)]
     cpu = m.request_block(0.5, 2.5)["cpu"]
     assert cpu["container_anon_peak_mib"] == 1200.0 and cpu["container_file_peak_mib"] == 2000.0
+    assert cpu["container_shmem_peak_mib"] == 1000.0
     m2 = sp.MemoryMonitor(cpu_reader=lambda: {}, interval_s=1.0)
     m2.samplers["cpu"].samples += [{"t_s": 1.0, "server_tree_rss_mib": 1.0, "host_mem_available_mib": 2.0,
                                     "scope": "s", "source": "x"}]
@@ -148,7 +153,8 @@ def test_cpu_block_reports_anon_and_file_peaks_and_old_records_still_work():
 def test_cpu_reader_includes_anon_and_file(monkeypatch):
     monkeypatch.setattr(sp, "_host_mem_mib", lambda: {"host_mem_available_mib": 1.0, "host_mem_total_mib": 2.0})
     monkeypatch.setattr(sp, "_cgroup_mem_mib", lambda: {"container_mem_limit_mib": None, "container_mem_current_mib": 5.0})
-    monkeypatch.setattr(sp, "_cgroup_mem_stat_mib", lambda: {"container_anon_mib": 3.0, "container_file_mib": 2.0})
+    monkeypatch.setattr(sp, "_cgroup_mem_stat_mib", lambda: {"container_anon_mib": 3.0, "container_file_mib": 2.0,
+                                                                  "container_shmem_mib": 1.0})
     r = sp.make_cpu_reader(None)()
     assert (r["container_anon_mib"], r["container_file_mib"]) == (3.0, 2.0)
 

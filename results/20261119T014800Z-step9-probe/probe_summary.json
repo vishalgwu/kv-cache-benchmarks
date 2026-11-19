@@ -1,0 +1,46 @@
+[
+  {
+    "evidence_lines": 10,
+    "kv_cache_tokens": 309248,
+    "name": "baseline",
+    "pool_vs_baseline": 1.0,
+    "same_output": true,
+    "second_request_hit_prefix_cache": false,
+    "started": true,
+    "ttft_ratio_second_over_first": 0.912693017335846,
+    "verdict": "control: no prefix hit expected"
+  },
+  {
+    "evidence_lines": 9,
+    "kv_cache_tokens": 309248,
+    "name": "prefix_cache",
+    "pool_vs_baseline": 1.0,
+    "same_output": true,
+    "second_request_hit_prefix_cache": true,
+    "started": true,
+    "ttft_ratio_second_over_first": 0.022110886036902123,
+    "verdict": "active: repeat request hit the prefix cache"
+  },
+  {
+    "evidence_lines": 9,
+    "kv_cache_tokens": null,
+    "name": "fp8_kv",
+    "pool_vs_baseline": null,
+    "same_output": null,
+    "second_request_hit_prefix_cache": null,
+    "started": false,
+    "ttft_ratio_second_over_first": null,
+    "verdict": "did not start (unsupported or invalid flags on this device/version)"
+  },
+  {
+    "evidence_lines": 19,
+    "kv_cache_tokens": 309248,
+    "name": "kv_offload_native",
+    "pool_vs_baseline": 1.0,
+    "same_output": true,
+    "second_request_hit_prefix_cache": true,
+    "started": true,
+    "ttft_ratio_second_over_first": 0.005116227036382354,
+    "verdict": "started and the log mentions offloading; activity under pressure still unproven"
+  }
+]

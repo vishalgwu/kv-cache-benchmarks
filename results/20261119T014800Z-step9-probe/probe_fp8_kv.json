@@ -1,0 +1,48 @@
+{
+  "enable_prefix_caching": false,
+  "extra_args": [
+    "--kv-cache-dtype",
+    "fp8"
+  ],
+  "failure": "ServerStartError: vllm exited with code 1 during startup.\n--- last server log lines (/kaggle/working/results_step9_probe/probe_fp8_kv.server.log) ---\n        *client_args,\n        renderer=renderer,\n    )\n  File \"/usr/local/lib/python3.13/dist-packages/vllm/tracing/otel.py\", line 175, in sync_wrapper\n    return func(*args, **kwargs)\n  File \"/usr/local/lib/python3.13/dist-packages/vllm/v1/engine/core_client.py\", line 1195, in __init__\n    super().__init__(\n    ~~~~~~~~~~~~~~~~^\n        asyncio_mode=True,\n        ^^^^^^^^^^^^^^^^^^\n    ...<4 lines>...\n        renderer=renderer,\n        ^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/usr/local/lib/python3.13/dist-packages/vllm/v1/engine/core_client.py\", line 729, in __init__\n    with launch_core_engines(\n         ~~~~~~~~~~~~~~~~~~~^\n        vllm_config, executor_class, log_stats, addresses\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ) as engine_launch:\n    ^\n  File \"/usr/lib/python3.13/contextlib.py\", line 148, in __exit__\n    next(self.gen)\n    ~~~~^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/dist-packages/vllm/v1/engine/utils.py\", line 1393, in launch_core_engines\n    wait_for_engine_startup(\n    ~~~~~~~~~~~~~~~~~~~~~~~^\n        handshake_socket,\n        ^^^^^^^^^^^^^^^^^\n    ...<4 lines>...\n        launch,\n        ^^^^^^^\n    )\n    ^\n  File \"/usr/local/lib/python3.13/dist-packages/vllm/v1/engine/utils.py\", line 1477, in wait_for_engine_startup\n    raise RuntimeError(\n    ...<8 lines>...\n    )\nRuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}\n",
+  "log_evidence": [
+    "(APIServer pid=1895) INFO 11-19 01:51:27 [startup.py:96] non-default args: {'model_tag': 'Qwen/Qwen2.5-1.5B-Instruct', 'host': '127.0.0.1', 'model': 'Qwen/Qwen2.5-1.5B-Instruct', 'dtype': 'float16', 'revision': '989aa7980e4cf806f80c7fef2b1adb7bc71aa306', 'toke",
+    "(APIServer pid=1895) INFO 11-19 01:51:27 [cache.py:519] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor",
+    "(EngineCore pid=1929) INFO 11-19 01:51:44 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='Qwen/Qwen2.5-1.5B-Instruct', speculative_config=None, tokenizer='Qwen/Qwen2.5-1.5B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, rev",
+    "(EngineCore pid=1929) ERROR 11-19 01:51:48 [core.py:1757]     + get_offloader().wrap_modules(",
+    "(EngineCore pid=1929) ERROR 11-19 01:51:48 [core.py:1757]   File \"/usr/local/lib/python3.13/dist-packages/vllm/model_executor/offloader/base.py\", line 120, in wrap_modules",
+    "(EngineCore pid=1929) ERROR 11-19 01:51:48 [core.py:1757] ValueError: FP8 KV cache is not supported by the Triton attention backend on Tesla T4 (compute capability 7.5); native FP8 (fp8e4nv) requires SM89+. Re-run with --kv-cache-dtype float16.",
+    "+ get_offloader().wrap_modules(",
+    "File \"/usr/local/lib/python3.13/dist-packages/vllm/model_executor/offloader/base.py\", line 120, in wrap_modules",
+    "ValueError: FP8 KV cache is not supported by the Triton attention backend on Tesla T4 (compute capability 7.5); native FP8 (fp8e4nv) requires SM89+. Re-run with --kv-cache-dtype float16."
+  ],
+  "name": "fp8_kv",
+  "probe_prompt_id": "L8192-000",
+  "purpose": "KV cache stored as fp8 (half the bytes per token); T4 support unverified",
+  "server_argv": [
+    "/usr/local/bin/vllm",
+    "serve",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    "--revision",
+    "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "--tokenizer-revision",
+    "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "--dtype",
+    "float16",
+    "--max-model-len",
+    "32768",
+    "--gpu-memory-utilization",
+    "0.85",
+    "--generation-config",
+    "vllm",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8000",
+    "--no-enable-prefix-caching",
+    "--kv-cache-dtype",
+    "fp8"
+  ],
+  "started": false,
+  "startup_s": 44.01157826000008
+}

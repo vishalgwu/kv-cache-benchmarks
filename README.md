@@ -58,7 +58,7 @@ Progress is evidence-based. A step is accepted only when its completion gate is 
 | 6 | Validate memory and timing measurements | Accepted (samplers verified on real hardware; engine cache occupancy matches the size formula) |
 | 7 | Measure the context-length sweep | In progress (full 1K-32K sweep run, 0 failures, committed; next: review the sweep, then Step 8) |
 | 8 | Add true concurrent-request experiments | In progress (1K-32K concurrency data collected and committed, 0 failures; written findings and acceptance next) |
-| 9 | Compare real cache and offload strategies | In progress (capability probe built; not yet run) |
+| 9 | Compare real cache and offload strategies | In progress (probe run: prefix caching active, fp8 KV unsupported on the T4, CPU offload starts; paired comparison under cache pressure next) |
 | 10 | Analyze results and create evidence-backed charts | Pending |
 | 11 | Prove reproducibility and package the benchmark | Pending |
 | 12 | Complete the report and final release | Pending |

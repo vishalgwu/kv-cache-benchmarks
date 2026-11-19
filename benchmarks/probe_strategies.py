@@ -55,7 +55,7 @@ def evidence_lines(log_text: str, limit: int = 30) -> list:
 
 def container_memory(pid: Optional[int]) -> dict:
     keys = ("server_tree_rss_mib", "container_mem_current_mib", "container_anon_mib", "container_file_mib",
-            "container_mem_limit_mib")
+            "container_shmem_mib", "container_mem_limit_mib")
     try:
         r = sampling.make_cpu_reader(pid)()
     except Exception as exc:  # no /proc on this machine: record the gap instead of failing the probe
