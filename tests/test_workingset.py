@@ -172,3 +172,30 @@ def test_kaggle_cells_use_real_flags_valid_strategies_and_ladder_sizes(name):
         assert all(int(s) in ws.LADDER for s in sessions.split())
     # the workload holds every ladder block plus one spare context
     assert f"--per-level {sum(ws.LADDER) + 1}" in cell and "--levels 4096" in cell
+
+
+def test_external_cache_hits_are_sampled_and_recorded_when_a_connector_exposes_them(wl, tmp_path):
+    from benchmarks import sampling as sp
+    samples, _ = sp.parse_prometheus('vllm:external_prefix_cache_hits_total{engine="0"} 128.0\n'
+                                     'vllm:external_prefix_cache_queries_total{engine="0"} 4096.0\n')
+    values = sp.extract_engine_values(samples)
+    assert values["external_prefix_cache_hits_total"] == 128.0 and values["external_prefix_cache_queries_total"] == 4096.0
+    assert sp.extract_engine_values([])["external_prefix_cache_hits_total"] is None
+    sim = SimCache(capacity=6)
+    ext = {"v": 0.0}
+
+    def metrics(host, port):
+        out = sim.metrics(host, port)
+        out["external_prefix_cache_hits_total"] = ext["v"]
+        return out
+
+    def scenario(payload):
+        ext["v"] += 10                                  # pretend a CPU tier supplied 10 tokens per request
+        return sim.scenario(payload)
+
+    with fake_server(scenario) as (host, port, _):
+        _, records = ws.run_workingset(workload_dir=wl, host=host, port=port, model=MODEL, revision="abc123",
+                                       strategy="kv_offload_native", sizes=[4], rounds=1, revisit_order="same",
+                                       seed=1, timeout_s=10.0, out_dir=tmp_path / "res", server_settings=None,
+                                       settle_s=0.0, ladder=LADDER, metrics_fn=metrics)
+    assert {r["external_prefix_cache_hits_delta"] for r in records} == {10.0}

@@ -82,7 +82,8 @@ def counter_snapshot(host: str, port: int, metrics_fn: Callable) -> dict:
         m = metrics_fn(host, port)
     except Exception:
         return {}
-    return {k: m.get(k) for k in ("prefix_cache_queries_total", "prefix_cache_hits_total")}
+    return {k: m.get(k) for k in ("prefix_cache_queries_total", "prefix_cache_hits_total",
+                                  "external_prefix_cache_hits_total")}
 
 
 def _delta(before: dict, after: dict, key: str) -> Optional[float]:
@@ -159,6 +160,7 @@ def run_workingset(*, workload_dir: pathlib.Path, host: str, port: int, model: s
         time.sleep(settle_s)
         after = counter_snapshot(host, port, metrics_fn)
         queries, hits = _delta(last, after, "prefix_cache_queries_total"), _delta(last, after, "prefix_cache_hits_total")
+        external = _delta(last, after, "external_prefix_cache_hits_total")
         last = after
         rec = runner.build_record(run_id=run_id, cfg_hash=cfg_hash, request_id=f"{run_id}-{seq:05d}", prompt=prompt,
                                   is_warmup=is_warmup, trial_index=turn, result=result, expected_model=model,
@@ -167,6 +169,7 @@ def run_workingset(*, workload_dir: pathlib.Path, host: str, port: int, model: s
         rec.update({"strategy": strategy, "working_set_sessions": size, "session": session, "turn": turn,
                     "phase": phase, "context_tokens": context_tokens, "context_id": ctx["prompt_id"],
                     "prefix_cache_queries_delta": queries, "prefix_cache_hits_delta": hits,
+                    "external_prefix_cache_hits_delta": external,
                     "hit_fraction": (hits / queries) if queries else None})
         out.write(json.dumps(rec, sort_keys=True) + "\n")
         out.flush()
@@ -265,6 +268,49 @@ def format_table(records: list) -> str:
     return "\n".join(lines)
 
 
+def offload_evidence(log_text: str) -> dict:
+    """What the engine's own log says about the CPU offload tier (None-safe; empty log gives zeros).
+
+    vLLM prints a ``KV Transfer metrics`` line and an ``External prefix cache hit rate`` every ~10 s. Totals
+    here are sums over those intervals. ``external_hit_rate_max_pct`` above 0 is the engine saying a
+    prefix hit was supplied by a tier other than the GPU; ``load_bytes_total`` above 0 means data was read
+    back from the CPU buffer. Neither is proof of speed-up (the request timings are).
+    """
+    import re
+    out = {"intervals": 0, "store_bytes_total": 0.0, "load_bytes_total": 0.0, "cpu_cache_usage_max": None,
+           "cpu_cache_read_usage_max": None, "external_hit_rate_max_pct": None, "prefix_hit_rate_max_pct": None,
+           "block_bytes": None}
+    for line in log_text.splitlines():
+        m = re.search(r"row=(\d+)", line)
+        if m and out["block_bytes"] is None and "CPU offload region" in line:
+            out["block_bytes"] = int(m.group(1))
+        m = re.search(r"External prefix cache hit rate: ([\d.]+)%", line)
+        if m:
+            v = float(m.group(1))
+            out["external_hit_rate_max_pct"] = v if out["external_hit_rate_max_pct"] is None else max(out["external_hit_rate_max_pct"], v)
+        m = re.search(r"Prefix cache hit rate: ([\d.]+)%", line)
+        if m:
+            v = float(m.group(1))
+            out["prefix_hit_rate_max_pct"] = v if out["prefix_hit_rate_max_pct"] is None else max(out["prefix_hit_rate_max_pct"], v)
+        if "KV Transfer metrics:" not in line:
+            continue
+        out["intervals"] += 1
+        for key, val in re.findall(r"vllm:(kv_offload_[a-z_]+)=([0-9.eE+-]+)", line):
+            v = float(val)
+            if key == "kv_offload_store_bytes":
+                out["store_bytes_total"] += v
+            elif key == "kv_offload_load_bytes":
+                out["load_bytes_total"] += v
+            elif key == "kv_offload_cpu_cache_usage_perc":
+                out["cpu_cache_usage_max"] = v if out["cpu_cache_usage_max"] is None else max(out["cpu_cache_usage_max"], v)
+            elif key == "kv_offload_cpu_cache_read_usage_perc":
+                out["cpu_cache_read_usage_max"] = v if out["cpu_cache_read_usage_max"] is None else max(out["cpu_cache_read_usage_max"], v)
+    if out["block_bytes"]:
+        out["store_blocks_total"] = out["store_bytes_total"] / out["block_bytes"]
+        out["load_blocks_total"] = out["load_bytes_total"] / out["block_bytes"]
+    return out
+
+
 # ----------------------------------------------------------------------------- command line
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 9 working-set sweep (one strategy per launch)")
@@ -322,6 +368,12 @@ def main() -> None:
     bad = [r for r in records if r["status"] != "ok"]
     for r in bad[:5]:
         print(f"  FAILED {r['request_id']}: {r['error_category']}: {str(r['error_message'])[:160]}")
+    try:
+        text = pathlib.Path(log_path).read_text(encoding="utf-8", errors="replace")
+        if "KV Transfer metrics:" in text:
+            print("offload evidence from the server log:", json.dumps(offload_evidence(text)))
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":

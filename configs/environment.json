@@ -191,9 +191,10 @@
     "Verify the scheduler token budget (max_num_batched_tokens) directly; the decode-starvation arithmetic assumes 2,048",
     "Check /dev/shm capacity and the largest safe --kv-offloading-size inside the 30 GiB container; record container_shmem_mib (added after the probe)",
     "Explain why the offload run's second request had a 0.058 s first token versus 0.253 s for prefix-only (single observation)",
-    "Run the Step 9 working-set sweep (docs/kaggle_step9_ws_a.py then docs/kaggle_step9_ws_b.py) and compare revisit hits and first-token times across baseline, prefix cache and prefix cache + offload",
     "Possible follow-up after the sweep: a shuffled-revisit run (--revisit-order shuffled) and a larger offload buffer, only if memory allows",
-    "Optional: add S = 64 and 80 to locate the prefix-cache loss point (about 74 expected), and a shuffled-revisit run for a smoother curve"
+    "Optional: add S = 64 and 80 to locate the prefix-cache loss point (about 74 expected), and a shuffled-revisit run for a smoother curve",
+    "Investigate why the native CPU offload tier served no hits: minimal evict-then-revisit check recording vllm:prompt_tokens_cached_by_source_total, other block sizes, release notes and issues for vLLM 0.34 extensible KV cache + OffloadingConnector",
+    "Step 9 written findings and acceptance (strategy support matrix: prefix cache active, fp8 unsupported on T4, CPU offload starts but gave no benefit here)"
   ],
   "step7_sweep": {
     "run_id": "20261117T053513Z-615f165f",
@@ -448,5 +449,40 @@
     "memory": "container file memory about 15.5 GiB and anonymous about 3.4 GiB flat across the whole run; shmem about 46 MiB in the baseline run (no offload); GPU 12,955 MiB",
     "session_note": "/dev/shm is 14 GiB (df); before any server container memory was 16.3 GiB of 30 GiB (anon 458 MiB, file 15.4 GiB, shmem 0)",
     "caveats": "one revisit round and one observation per cell; same-order revisits are the LRU worst case; earlier cells' blocks remain in the cache as least recently used; the cliff location is not measured"
+  },
+  "step9_ws_b": {
+    "run": "20261119T034805Z-1fee2266",
+    "design": "same as step9_ws_a with --enable-prefix-caching --kv-offloading-backend native --kv-offloading-size 8; 961 requests, 0 failures",
+    "result": "identical cache hits to prefix_cache run (193,536 tokens, all at S=48 revisit); S=96/144/192 revisits 0 hits, 3.25 s median first token; median paired first-token difference vs prefix-only 0.0008 s",
+    "log_evidence": {
+      "intervals": 375,
+      "store_bytes_total": 106958946304,
+      "store_blocks_total": 58288,
+      "load_bytes_total": 0,
+      "external_prefix_cache_hit_rate_max_pct": 0.0,
+      "cpu_cache_usage_perc_max": 0.01367,
+      "block_bytes": 1835008
+    },
+    "memory": {
+      "container_shmem_peak_mib": 8237.75,
+      "baseline_shmem_mib": 46,
+      "container_file_peak_mib": "23,386-23,393 (prefix-only 15,478-15,487)",
+      "container_anon_peak_mib": "3,441-3,491",
+      "container_mem_current_peak_mib": "27,675-27,733 of 30,720",
+      "dev_shm_size": "14 GiB"
+    },
+    "hypotheses_unverified": [
+      "connector initialised while the extensible KV cache held only 0.05 GiB committed",
+      "stored blocks are released after each request",
+      "lookup granularity or key mismatch"
+    ],
+    "metric_names_in_0_34_catalog": [
+      "vllm:kv_offload_total_bytes_total",
+      "vllm:external_prefix_cache_hits_total",
+      "vllm:external_prefix_cache_queries_total",
+      "vllm:prompt_tokens_cached_by_source_total",
+      "vllm:num_requests_kv_fetch_by_stage"
+    ],
+    "caveats": "one observation per cell; per-request hit counters were local-only (external counter now sampled); offload result is for this configuration only"
   }
 }

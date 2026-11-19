@@ -47,6 +47,10 @@ ENGINE_METRICS = {
     # they should not grow.
     "prefix_cache_hits_total": (("vllm:prefix_cache_hits_total", "vllm:prefix_cache_hits"), "sum"),
     "prefix_cache_queries_total": (("vllm:prefix_cache_queries_total", "vllm:prefix_cache_queries"), "sum"),
+    # Hits supplied by a KV connector (for example the CPU offload tier), counted separately by vLLM 0.34.
+    # They are absent without a connector, so these stay None in ordinary runs.
+    "external_prefix_cache_hits_total": (("vllm:external_prefix_cache_hits_total",), "sum"),
+    "external_prefix_cache_queries_total": (("vllm:external_prefix_cache_queries_total",), "sum"),
 }
 
 
@@ -540,6 +544,10 @@ class MemoryMonitor:
         for key in ("preemptions_total", "prefix_cache_hits_total", "prefix_cache_queries_total"):
             vals = [s[key] for s in eng if s.get(key) is not None]
             deltas[key] = (vals[-1] - vals[0]) if len(vals) >= 2 else None
+        for key in ("external_prefix_cache_hits_total", "external_prefix_cache_queries_total"):
+            vals = [s[key] for s in eng if s.get(key) is not None]
+            if vals:  # only when the engine exposes them (a KV connector was active)
+                deltas[key] = (vals[-1] - vals[0]) if len(vals) >= 2 else None
         out["engine_counter_deltas_over_run"] = deltas
         return out
 

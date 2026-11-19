@@ -1,0 +1,135 @@
+{
+  "config": {
+    "context_tokens": 4096,
+    "engine": "vllm-openai-chat-stream",
+    "ladder": [
+      48,
+      96,
+      144,
+      192
+    ],
+    "load_policy": "one request at a time (concurrency 1)",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "question": "\n\nFollow-up {turn}: reply with the single word: ok.",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "revisit_order": "same",
+    "rounds": 1,
+    "sampling": {
+      "ignore_eos": true,
+      "max_tokens": 16,
+      "temperature": 0
+    },
+    "schema": "kv-bench-run-config/3",
+    "seed": 1234,
+    "server": {
+      "cuda_visible_devices": "0",
+      "dtype": "float16",
+      "enable_prefix_caching": true,
+      "enforce_eager": false,
+      "engine": "vllm serve",
+      "extra_args": [
+        "--kv-offloading-backend",
+        "native",
+        "--kv-offloading-size",
+        "8"
+      ],
+      "generation_config": "vllm",
+      "gpu_memory_utilization": 0.85,
+      "max_model_len": 32768,
+      "strategy": "kv_offload_native"
+    },
+    "settle_s": 0.5,
+    "sizes": [
+      48,
+      96,
+      144,
+      192
+    ],
+    "stop_on_error": true,
+    "strategy": "kv_offload_native",
+    "timeout_s": 900.0,
+    "warmup": true,
+    "workload_id": "4e32d8a1e91783e1"
+  },
+  "config_hash": "1fee22665c264071",
+  "counts": {
+    "errors": 0,
+    "ok": 961,
+    "requests": 961,
+    "usable": 960,
+    "warmup": 1
+  },
+  "engine_reported_startup": {
+    "attention_backend": "TRITON_ATTN",
+    "available_kv_cache_gib": 8.92,
+    "consumed_weights_plus_non_torch_gib": 3.23,
+    "cuda_graph_gib": 0.41,
+    "device_total_gib": 14.56,
+    "free_memory_gib_at_startup": 14.41,
+    "kv_block_size_tokens": 64,
+    "kv_cache_blocks": 4832,
+    "kv_cache_final_gib": 8.26,
+    "kv_cache_tokens": 309248,
+    "max_concurrency_reported": 9.44,
+    "max_concurrency_tokens_per_request": 32768,
+    "model_loading_gib": 2.98,
+    "peak_activation_gib": 0.23,
+    "source": "vLLM server log (engine-reported)",
+    "vllm_version_in_log": "0.34.0"
+  },
+  "environment_json_sha256": "357f6eaf286c799acb9231865a4253781af8e45eb7bb5d834f3063699674a34e",
+  "finished_utc": "2026-11-19T04:50:44.756745+00:00",
+  "git_commit": "90e87ad7c3e6e162e10c1d86ca8c485cfa07ceaa",
+  "lock_mismatches": [],
+  "memory_monitoring": {
+    "baseline_window_s": 3.0001331330004177,
+    "cpu": {
+      "last_error": null,
+      "max_gap_s": 0.5168948564987659,
+      "mean_gap_s": 0.49999894391101335,
+      "n_samples": 7519,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine": {
+      "last_error": null,
+      "max_gap_s": 0.5261028850000002,
+      "mean_gap_s": 0.49999979237909004,
+      "n_samples": 7519,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "engine_counter_deltas_over_run": {
+      "preemptions_total": 0.0,
+      "prefix_cache_hits_total": 193536.0,
+      "prefix_cache_queries_total": 3948523.0
+    },
+    "gpu": {
+      "last_error": null,
+      "max_gap_s": 0.5169435710013204,
+      "mean_gap_s": 0.4999992366220403,
+      "n_samples": 7519,
+      "nominal_interval_s": 0.5,
+      "read_errors": 0
+    },
+    "gpu_idle_baseline_used_mib": {
+      "label": "measured",
+      "n_samples": 6,
+      "value": 12807.1875
+    },
+    "interval_nominal_s": 0.5
+  },
+  "package_versions": {
+    "huggingface_hub": "2.4.0",
+    "numpy": "2.1.3",
+    "tokenizers": "0.23.3",
+    "torch": "2.14.0",
+    "transformers": "5.20.2",
+    "vllm": "0.34.0"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16",
+  "run_id": "20261119T034805Z-1fee2266",
+  "server_log": "/kaggle/working/results_step9_ws_b/kv_offload_native/server_kv_offload_native.log",
+  "started_utc": "2026-11-19T03:48:05.361795+00:00"
+}
